@@ -252,6 +252,30 @@ a.card {
 
 .card:hover { transform: translateY(-2px); }
 
+a.card.policy-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.policy-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2810 / 1504;
+  object-fit: cover;
+}
+
+.policy-card h3 { margin: 1rem 1.2rem 0.35rem; }
+
+.policy-card p { margin: 0 1.2rem 1.2rem; }
+
+.policy-figure { margin: 0.2rem 0 1.6rem; }
+
+.policy-figure img {
+  display: block;
+  width: 100%;
+  border-radius: 22px;
+}
+
 .icon {
   width: 42px;
   height: 42px;
