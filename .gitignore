@@ -1,0 +1,4 @@
+data/*.json
+data/*.tmp
+.wrangler/
+node_modules/
