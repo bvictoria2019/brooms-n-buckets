@@ -217,15 +217,15 @@ p { margin: 0 0 1rem; }
 
 .founders {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 18rem));
+  grid-template-columns: repeat(2, 3in);
   justify-content: center;
-  gap: 2.5rem 3rem;
+  gap: 2rem 2.5rem;
   margin-top: 2rem;
 }
 
 .founder img {
-  width: 168px;
-  height: 168px;
+  width: 3in;
+  height: 3in;
   border-radius: 50%;
   object-fit: cover;
   display: block;
@@ -573,6 +573,8 @@ textarea { min-height: 140px; resize: vertical; }
     max-height: none;
   }
 
+  .founders { grid-template-columns: 3in; }
+
   .menu-btn, .btn.header-book { display: inline-flex; }
 
   .menu-btn {
@@ -607,7 +609,7 @@ textarea { min-height: 140px; resize: vertical; }
 }
 
 @media (max-width: 640px) {
-  .cards-3, .cards-2, .form-row, .founders { grid-template-columns: 1fr; }
+  .cards-3, .cards-2, .form-row { grid-template-columns: 1fr; }
   .actions .btn { width: 100%; }
   .brand img { height: 52px; }
 }
