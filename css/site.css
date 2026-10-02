@@ -215,6 +215,39 @@ p { margin: 0 0 1rem; }
 
 .center { text-align: center; }
 
+.founders {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 18rem));
+  justify-content: center;
+  gap: 2.5rem 3rem;
+  margin-top: 2rem;
+}
+
+.founder img {
+  width: 168px;
+  height: 168px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  margin-inline: auto;
+  border: 4px solid #fff;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.founder-jody { object-position: center 38%; }
+
+.founder-lucy { object-position: center 15%; }
+
+.founder h3 {
+  font-size: 1.45rem;
+  margin: 1rem 0 0.35rem;
+}
+
+.founder p {
+  margin: 0 auto;
+  max-width: 16rem;
+}
+
 .center .lede,
 .center p { margin-inline: auto; }
 
@@ -574,7 +607,7 @@ textarea { min-height: 140px; resize: vertical; }
 }
 
 @media (max-width: 640px) {
-  .cards-3, .cards-2, .form-row { grid-template-columns: 1fr; }
+  .cards-3, .cards-2, .form-row, .founders { grid-template-columns: 1fr; }
   .actions .btn { width: 100%; }
   .brand img { height: 52px; }
 }
