@@ -311,6 +311,53 @@ p { margin: 0 0 1rem; }
 
 .atmosphere-copy { padding: 1.6rem 0 2.2rem; }
 
+.rate-wrap { overflow-x: auto; margin-top: 1rem; }
+
+.rates {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+  background: var(--paper);
+}
+
+.rates th,
+.rates td {
+  text-align: left;
+  padding: 0.8rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.rates thead th {
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--blue);
+}
+
+.rates tbody th { font-weight: 600; }
+
+.policy {
+  margin-top: 1.2rem;
+  padding: 0.9rem 1rem;
+  background: var(--pale);
+  border-left: 3px solid var(--sage);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .checklist {
   margin: 0.4rem 0 0;
   padding: 0;
