@@ -534,7 +534,11 @@ textarea { min-height: 140px; resize: vertical; }
 
   .hero-art { min-height: 0; justify-content: center; }
 
-  .hero-mascot { width: min(92vw, 520px); }
+  .hero-mascot {
+    width: min(88vw, 420px);
+    max-width: min(88vw, 420px);
+    max-height: none;
+  }
 
   .menu-btn, .btn.header-book { display: inline-flex; }
 
