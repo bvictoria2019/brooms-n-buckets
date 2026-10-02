@@ -220,6 +220,11 @@ p { margin: 0 0 1rem; }
 
 .narrow { max-width: 40rem; margin-inline: auto; }
 
+.policy-doc h2 {
+  font-size: 1.55rem;
+  margin: 1.6rem 0 0.5rem;
+}
+
 .cards-3,
 .cards-4,
 .cards-2 {
@@ -237,6 +242,12 @@ p { margin: 0 0 1rem; }
   border: 1px solid var(--line);
   border-radius: 22px;
   padding: 1.4rem 1.3rem 1.3rem;
+}
+
+a.card {
+  display: block;
+  color: inherit;
+  text-decoration: none;
 }
 
 .card:hover { transform: translateY(-2px); }
