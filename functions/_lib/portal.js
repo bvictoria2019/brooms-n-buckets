@@ -591,7 +591,7 @@ async function saveInquiry(db, row) {
   );
 }
 
-export async function routeInquiry(db, request) {
+export async function routeInquiry(db, request, notify) {
   if (request.method !== "POST") return json(405, { error: "Please use the form." });
   const body = await readJson(request);
   if (!body) return json(400, { error: "Please check the form and try again." });
@@ -647,7 +647,21 @@ export async function routeInquiry(db, request) {
       }
       throw error;
     }
-    return json(200, { ok: true, saved: "booking" });
+    return finishRequest(notify, "book", {
+      name,
+      email,
+      phone,
+      address: home.address,
+      zip: home.zip,
+      propertyType: PROPERTY[home.propertyType],
+      size: home.size,
+      bedrooms: home.bedrooms,
+      bathrooms: home.bathrooms,
+      cleaningType: CLEANING[home.cleaningType],
+      frequency: FREQUENCY[home.frequency],
+      desiredOn: home.desiredOn,
+      notes: home.notes,
+    }, "booking");
   }
   let summary = "";
   let payload = { name, email: email || null, phone };
@@ -676,7 +690,54 @@ export async function routeInquiry(db, request) {
     summary,
     payload,
   });
-  return json(200, { ok: true, saved: "inquiry" });
+  const letter = { name, email, phone, ...payload };
+  if (letter.propertyType) letter.propertyType = PROPERTY[letter.propertyType] || letter.propertyType;
+  if (letter.cleaningType) letter.cleaningType = CLEANING[letter.cleaningType] || letter.cleaningType;
+  if (letter.frequency) letter.frequency = FREQUENCY[letter.frequency] || letter.frequency;
+  return finishRequest(notify, kind, letter, "inquiry");
+}
+
+const MAIL_FIELDS = [
+  ["name", "Name"],
+  ["email", "Email"],
+  ["phone", "Phone"],
+  ["address", "Address"],
+  ["zip", "ZIP"],
+  ["city", "City or ZIP"],
+  ["propertyType", "Property"],
+  ["size", "Size"],
+  ["bedrooms", "Bedrooms"],
+  ["bathrooms", "Bathrooms"],
+  ["cleaningType", "Cleaning"],
+  ["frequency", "Frequency"],
+  ["desiredOn", "Desired date"],
+  ["notes", "Notes"],
+  ["interest", "Interest"],
+  ["contactMethod", "Preferred contact"],
+  ["message", "Message"],
+];
+
+function requestLetter(kind, fields) {
+  const lines = [kind === "book" ? "Book a Clean" : "Contact", ""];
+  MAIL_FIELDS.forEach(([key, label]) => {
+    if (fields[key] == null || fields[key] === "") return;
+    lines.push(`${label}: ${fields[key]}`);
+  });
+  lines.push("", "Temporary copy for Bill until scheduler@brooms-n-buckets.com is ready.");
+  return lines.join("\n");
+}
+
+async function finishRequest(notify, kind, fields, saved) {
+  let mailed = false;
+  if (typeof notify === "function") {
+    const subject = kind === "book" ? `Book a Clean from ${fields.name}` : `Contact from ${fields.name}`;
+    try {
+      mailed = Boolean(await notify(subject, requestLetter(kind, fields)));
+    } catch {
+      mailed = false;
+    }
+  }
+  return json(200, { ok: true, saved, mailed });
 }
 
 async function logout(db, request) {
