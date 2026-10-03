@@ -472,6 +472,7 @@ legend { font-weight: 600; margin-bottom: 0.35rem; }
 }
 
 .form[hidden],
+label[hidden],
 [data-signed-in][hidden],
 [data-signed-out][hidden] { display: none; }
 
@@ -552,7 +553,8 @@ textarea { min-height: 140px; resize: vertical; }
   background: var(--pale);
 }
 
-.note[hidden] { display: none; }
+.confirm-request[hidden],
+.confirm-request [hidden] { display: none; }
 .note strong { display: block; }
 .note p { margin: 0.35rem 0 0; }
 

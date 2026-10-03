@@ -6,6 +6,11 @@
 -- side. password_hash and token_hash hold hashes, never the password or the
 -- session token.
 --
+-- locations is one physical place for a client. One client can have many
+-- locations. Each location holds the address and the home itself: property
+-- type, size, bedrooms, bathrooms, and whether it is a commercial property.
+-- An apartment can be commercial. A booking belongs to one client and one
+-- location. A client can have many bookings.
 -- A booking starts as requested. request_status moves through review until
 -- the visit is scheduled, or the request is changed or denied. assigned_emp_id
 -- is the employee scheduled to see that customer. The client portal reads
@@ -109,14 +114,41 @@ CREATE UNIQUE INDEX sessions_token ON sessions (token_hash);
 CREATE INDEX sessions_client ON sessions (client_id);
 CREATE INDEX sessions_employee ON sessions (emp_id);
 
+CREATE TABLE locations (
+  location_id TEXT PRIMARY KEY,
+  client_id TEXT NOT NULL REFERENCES clients (client_id) ON DELETE RESTRICT,
+  address TEXT NOT NULL,
+  zip TEXT NOT NULL,
+  property_type TEXT NOT NULL,
+  commercial INTEGER NOT NULL DEFAULT 0,
+  size_sqft INTEGER,
+  bedrooms INTEGER NOT NULL,
+  bathrooms REAL NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  CHECK (length(location_id) > 0),
+  CHECK (property_type IN ('house', 'townhome', 'apartment', 'other')),
+  CHECK (commercial IN (0, 1)),
+  CHECK (size_sqft IS NULL OR size_sqft > 0),
+  CHECK (bedrooms >= 0),
+  CHECK (bathrooms > 0),
+  CHECK (length(address) BETWEEN 1 AND 200),
+  CHECK (length(zip) BETWEEN 5 AND 10)
+);
+
+CREATE INDEX locations_client ON locations (client_id, updated_at);
+CREATE UNIQUE INDEX locations_place ON locations (client_id, zip, address COLLATE NOCASE);
+
 CREATE TABLE bookings (
   booking_id TEXT PRIMARY KEY,
   client_id TEXT NOT NULL REFERENCES clients (client_id) ON DELETE RESTRICT,
+  location_id TEXT REFERENCES locations (location_id) ON DELETE RESTRICT,
   assigned_emp_id TEXT REFERENCES employees (emp_id) ON DELETE RESTRICT,
   -- Shared by each visit in one recurring run. Empty for a single visit.
   series_id TEXT,
   request_status TEXT NOT NULL DEFAULT 'requested',
   property_type TEXT NOT NULL,
+  commercial INTEGER NOT NULL DEFAULT 0,
   size_sqft INTEGER,
   bedrooms INTEGER NOT NULL,
   bathrooms REAL NOT NULL,
@@ -146,6 +178,7 @@ CREATE TABLE bookings (
     'no_access'
   )),
   CHECK (property_type IN ('house', 'townhome', 'apartment', 'other')),
+  CHECK (commercial IN (0, 1)),
   CHECK (cleaning_type IN ('recurring', 'deep', 'move_in', 'move_out')),
   CHECK (frequency IN ('weekly', 'every_two_weeks', 'monthly', 'one_time')),
   CHECK (size_sqft IS NULL OR size_sqft > 0),
@@ -177,6 +210,7 @@ CREATE TABLE bookings (
 );
 
 CREATE INDEX bookings_client ON bookings (client_id, desired_on);
+CREATE INDEX bookings_location ON bookings (location_id);
 CREATE INDEX bookings_employee ON bookings (assigned_emp_id, scheduled_on);
 CREATE INDEX bookings_status ON bookings (request_status, desired_on);
 CREATE INDEX bookings_series ON bookings (series_id);

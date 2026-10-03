@@ -1,0 +1,12 @@
+name = "brooms-n-buckets"
+pages_build_output_dir = "."
+compatibility_date = "2026-10-02"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "brooms-n-buckets"
+database_id = "4d0c7379-ca6f-4297-88a5-61fd5b712ed"
+
+[[send_email]]
+name = "MAIL"
+destination_address = "billvictoria103@gmail.com"

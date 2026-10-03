@@ -410,41 +410,187 @@ async function employeeHome(db, request) {
   });
 }
 
+const LOCATIONS_TABLE = `
+CREATE TABLE IF NOT EXISTS locations (
+  location_id TEXT PRIMARY KEY,
+  client_id TEXT NOT NULL REFERENCES clients (client_id) ON DELETE RESTRICT,
+  address TEXT NOT NULL,
+  zip TEXT NOT NULL,
+  property_type TEXT NOT NULL,
+  commercial INTEGER NOT NULL DEFAULT 0,
+  size_sqft INTEGER,
+  bedrooms INTEGER NOT NULL,
+  bathrooms REAL NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  CHECK (length(location_id) > 0),
+  CHECK (property_type IN ('house', 'townhome', 'apartment', 'other')),
+  CHECK (commercial IN (0, 1)),
+  CHECK (size_sqft IS NULL OR size_sqft > 0),
+  CHECK (bedrooms >= 0),
+  CHECK (bathrooms > 0),
+  CHECK (length(address) BETWEEN 1 AND 200),
+  CHECK (length(zip) BETWEEN 5 AND 10)
+)`;
+
+let homeModelReady = false;
+
+function placeFields(place, visit) {
+  const fields = {
+    id: place.location_id,
+    address: place.address,
+    zip: place.zip,
+    propertyType: PROPERTY[place.property_type] || "",
+    bedrooms: String(place.bedrooms),
+    bathrooms: String(place.bathrooms),
+  };
+  if (place.commercial) fields.commercial = "yes";
+  if (place.size_sqft) fields.size = String(place.size_sqft);
+  if (visit) {
+    fields.cleaningType = labelCleaning(visit.cleaning_type);
+    fields.frequency = FREQUENCY[visit.frequency] || "";
+    if (visit.notes) fields.notes = visit.notes;
+  }
+  return fields;
+}
+
+async function findPlace(db, clientId, home) {
+  return db.one(
+    "SELECT location_id FROM locations WHERE client_id = ? AND zip = ? AND address = ? COLLATE NOCASE",
+    [clientId, home.zip, home.address],
+  );
+}
+
+async function writePlace(db, locationId, clientId, home, now) {
+  await db.run(
+    `UPDATE locations
+     SET address = ?, zip = ?, property_type = ?, commercial = ?, size_sqft = ?, bedrooms = ?, bathrooms = ?, updated_at = ?
+     WHERE location_id = ? AND client_id = ?`,
+    [home.address, home.zip, home.propertyType, home.commercial ? 1 : 0, home.size, home.bedrooms, home.bathrooms, now, locationId, clientId],
+  );
+}
+
+async function upsertLocation(db, clientId, home, locationId) {
+  const now = new Date().toISOString();
+  if (locationId) {
+    const owned = await db.one(
+      "SELECT location_id FROM locations WHERE location_id = ? AND client_id = ?",
+      [locationId, clientId],
+    );
+    if (owned) {
+      try {
+        await writePlace(db, owned.location_id, clientId, home, now);
+        return owned.location_id;
+      } catch (error) {
+        if (!/UNIQUE/i.test(String(error && error.message ? error.message : error))) throw error;
+      }
+    }
+  }
+  const existing = await findPlace(db, clientId, home);
+  if (existing) {
+    await writePlace(db, existing.location_id, clientId, home, now);
+    return existing.location_id;
+  }
+  const id = crypto.randomUUID();
+  try {
+    await db.run(
+      `INSERT INTO locations (
+        location_id, client_id, address, zip, property_type, commercial, size_sqft,
+        bedrooms, bathrooms, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, clientId, home.address, home.zip, home.propertyType, home.commercial ? 1 : 0, home.size, home.bedrooms, home.bathrooms, now, now],
+    );
+    return id;
+  } catch (error) {
+    if (!/UNIQUE/i.test(String(error && error.message ? error.message : error))) throw error;
+    const again = await findPlace(db, clientId, home);
+    if (!again) throw error;
+    await writePlace(db, again.location_id, clientId, home, now);
+    return again.location_id;
+  }
+}
+
+async function addColumn(db, table, column, definition) {
+  try {
+    await db.run(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  } catch (error) {
+    const message = String(error && error.message ? error.message : error);
+    if (!/duplicate column/i.test(message)) throw error;
+  }
+}
+
+async function ensureHomeModel(db) {
+  if (homeModelReady) return;
+  await db.run(LOCATIONS_TABLE);
+  await db.run("CREATE INDEX IF NOT EXISTS locations_client ON locations (client_id, updated_at)");
+  await db.run("CREATE UNIQUE INDEX IF NOT EXISTS locations_place ON locations (client_id, zip, address COLLATE NOCASE)");
+  try {
+    await db.run("ALTER TABLE bookings ADD COLUMN location_id TEXT");
+  } catch (error) {
+    const message = String(error && error.message ? error.message : error);
+    if (!/duplicate column/i.test(message)) throw error;
+  }
+  await db.run("CREATE INDEX IF NOT EXISTS bookings_location ON bookings (location_id)");
+  await addColumn(db, "locations", "commercial", "INTEGER NOT NULL DEFAULT 0");
+  await addColumn(db, "bookings", "commercial", "INTEGER NOT NULL DEFAULT 0");
+  const pending = await db.all(
+    `SELECT booking_id, client_id, property_type, size_sqft, bedrooms, bathrooms, address, zip
+     FROM bookings WHERE location_id IS NULL ORDER BY created_at`,
+  );
+  for (const row of pending) {
+    const locationId = await upsertLocation(db, row.client_id, {
+      address: row.address,
+      zip: row.zip,
+      propertyType: row.property_type,
+      size: row.size_sqft,
+      bedrooms: row.bedrooms,
+      bathrooms: row.bathrooms,
+    }, "");
+    await db.run(
+      "UPDATE bookings SET location_id = ? WHERE booking_id = ? AND location_id IS NULL",
+      [locationId, row.booking_id],
+    );
+  }
+  homeModelReady = true;
+}
+
 async function bookPrefill(db, request) {
   const session = await sessionFor(db, request);
   if (!session?.client_id) return json(200, { signedIn: Boolean(session?.emp_id), fields: {} });
   const client = await db.one(
-    "SELECT name, email, phone, address, zip FROM clients WHERE client_id = ?",
+    "SELECT name, email, phone FROM clients WHERE client_id = ?",
     [session.client_id],
   );
   if (!client) return json(200, { signedIn: false, fields: {} });
-  const service = await db.one(
-    `SELECT property_type, size_sqft, bedrooms, bathrooms, cleaning_type, frequency, address, zip, notes
-     FROM service_history
-     WHERE client_id = ? AND outcome = 'completed'
-     ORDER BY rendered_on DESC, created_at DESC
-     LIMIT 1`,
+  await ensureHomeModel(db);
+  const places = await db.all(
+    `SELECT location_id, property_type, commercial, size_sqft, bedrooms, bathrooms, address, zip
+     FROM locations WHERE client_id = ? ORDER BY updated_at DESC`,
     [session.client_id],
   );
+  const visits = await db.all(
+    `SELECT location_id, cleaning_type, frequency, notes
+     FROM bookings WHERE client_id = ? AND location_id IS NOT NULL
+     ORDER BY created_at DESC`,
+    [session.client_id],
+  );
+  const visitByPlace = new Map();
+  visits.forEach((visit) => {
+    if (!visitByPlace.has(visit.location_id)) visitByPlace.set(visit.location_id, visit);
+  });
+  const locations = places.map((place) => placeFields(place, visitByPlace.get(place.location_id)));
   const fields = {
     name: client.name,
     email: client.email,
     phone: client.phone,
   };
-  if (client.address) fields.address = client.address;
-  if (client.zip) fields.zip = client.zip;
-  if (service) {
-    fields.address = service.address;
-    fields.zip = service.zip;
-    fields.propertyType = PROPERTY[service.property_type] || "";
-    if (service.size_sqft) fields.size = String(service.size_sqft);
-    fields.bedrooms = String(service.bedrooms);
-    fields.bathrooms = String(service.bathrooms);
-    fields.cleaningType = labelCleaning(service.cleaning_type);
-    fields.frequency = FREQUENCY[service.frequency] || "";
-    if (service.notes) fields.notes = service.notes;
+  let source = "member";
+  if (locations[0]) {
+    const { id, ...home } = locations[0];
+    Object.assign(fields, home);
+    source = "location";
   }
-  return json(200, { signedIn: true, source: service ? "last-service" : "member", fields });
+  return json(200, { signedIn: true, source, fields, locations });
 }
 
 const INQUIRY_TABLE = `
@@ -523,6 +669,11 @@ function bathroomCount(value) {
   return count;
 }
 
+function commercialFlag(value) {
+  const text = String(value ?? "").trim().toLowerCase();
+  return text === "yes" || text === "1" || text === "true" ? 1 : 0;
+}
+
 function bookFields(body) {
   const address = clean(body.address, 200);
   const zip = clean(body.zip, 10);
@@ -557,6 +708,7 @@ function bookFields(body) {
     bathrooms,
     size,
     notes: notes || null,
+    commercial: commercialFlag(body.commercial),
   };
 }
 
@@ -611,16 +763,20 @@ export async function routeInquiry(db, request, notify) {
     const now = new Date().toISOString();
     const bookingId = crypto.randomUUID();
     try {
+      await ensureHomeModel(db);
+      const locationId = await upsertLocation(db, clientId, home, clean(body.locationId, 80));
       await db.run(
         `INSERT INTO bookings (
-          booking_id, client_id, request_status, property_type, size_sqft,
+          booking_id, client_id, location_id, request_status, property_type, commercial, size_sqft,
           bedrooms, bathrooms, cleaning_type, frequency, address, zip,
           desired_on, notes, created_at, updated_at
-        ) VALUES (?, ?, 'requested', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, 'requested', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           bookingId,
           clientId,
+          locationId,
           home.propertyType,
+          home.commercial,
           home.size,
           home.bedrooms,
           home.bathrooms,
@@ -638,7 +794,7 @@ export async function routeInquiry(db, request, notify) {
         `INSERT INTO interaction_history
           (interaction_id, client_id, booking_id, kind, request_status, summary, actor, created_at)
          VALUES (?, ?, ?, 'status', 'requested', ?, 'client', ?)`,
-        [crypto.randomUUID(), clientId, bookingId, `Requested a clean for ${home.address} on ${home.desiredOn}.`, now],
+        [crypto.randomUUID(), clientId, bookingId, `Requested a clean for ${home.address} on ${home.desiredOn}.${home.commercial ? " Commercial property." : ""}`, now],
       );
     } catch (error) {
       const message = String(error && error.message ? error.message : error);
@@ -657,6 +813,7 @@ export async function routeInquiry(db, request, notify) {
       size: home.size,
       bedrooms: home.bedrooms,
       bathrooms: home.bathrooms,
+      commercial: home.commercial ? "Yes" : "No",
       cleaningType: CLEANING[home.cleaningType],
       frequency: FREQUENCY[home.frequency],
       desiredOn: home.desiredOn,
@@ -694,6 +851,7 @@ export async function routeInquiry(db, request, notify) {
   if (letter.propertyType) letter.propertyType = PROPERTY[letter.propertyType] || letter.propertyType;
   if (letter.cleaningType) letter.cleaningType = CLEANING[letter.cleaningType] || letter.cleaningType;
   if (letter.frequency) letter.frequency = FREQUENCY[letter.frequency] || letter.frequency;
+  if ("commercial" in letter) letter.commercial = letter.commercial ? "Yes" : "No";
   return finishRequest(notify, kind, letter, "inquiry");
 }
 
@@ -705,6 +863,7 @@ const MAIL_FIELDS = [
   ["zip", "ZIP"],
   ["city", "City or ZIP"],
   ["propertyType", "Property"],
+  ["commercial", "Commercial property"],
   ["size", "Size"],
   ["bedrooms", "Bedrooms"],
   ["bathrooms", "Bathrooms"],
@@ -723,7 +882,6 @@ function requestLetter(kind, fields) {
     if (fields[key] == null || fields[key] === "") return;
     lines.push(`${label}: ${fields[key]}`);
   });
-  lines.push("", "Temporary copy for Bill until scheduler@brooms-n-buckets.com is ready.");
   return lines.join("\n");
 }
 
