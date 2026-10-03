@@ -1,3 +1,4 @@
+db/schema-console.sql
 data/*.json
 data/*.tmp
 data/*.sqlite

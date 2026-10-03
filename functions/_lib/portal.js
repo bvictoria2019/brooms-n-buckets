@@ -20,6 +20,20 @@ const CLEANING = {
   move_out: "Move-out",
 };
 
+const PROPERTY = {
+  house: "House",
+  townhome: "Townhome",
+  apartment: "Apartment",
+  other: "Other",
+};
+
+const FREQUENCY = {
+  weekly: "Weekly",
+  every_two_weeks: "Every two weeks",
+  monthly: "Monthly",
+  one_time: "One time",
+};
+
 export function d1(database) {
   return {
     async one(sql, params = []) {
@@ -60,6 +74,25 @@ function json(status, body, cookie) {
 
 function clean(value, max) {
   return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function validEmail(email) {
+  if (email.length < 6 || email.length > 120 || email.includes(" ")) return false;
+  const parts = email.split("@");
+  if (parts.length !== 2) return false;
+  const [local, domain] = parts;
+  if (!local || !domain || local.startsWith(".") || local.endsWith(".") || local.includes("..")) return false;
+  if (!/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+$/i.test(local)) return false;
+  const labels = domain.split(".");
+  if (labels.length < 2) return false;
+  return labels.every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(label));
+}
+
+function formatPhone(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  const national = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  if (!/^[2-9]\d{2}[2-9]\d{6}$/.test(national)) return "";
+  return `${national.slice(0, 3)}-${national.slice(3, 6)}-${national.slice(6)}`;
 }
 
 function bytesToHex(bytes) {
@@ -185,14 +218,22 @@ async function registerCustomer(db, request) {
   const body = await readJson(request);
   if (!body) return json(400, { error: "Please check the form and try again." });
   if (clean(body.website, 80)) return json(200, { ok: true });
-  const name = clean(body.name, 80);
+  const firstName = clean(body.firstName, 40);
+  const lastName = clean(body.lastName, 40);
+  const name = `${firstName} ${lastName}`.trim();
   const email = clean(body.email, 120).toLowerCase();
-  const phone = clean(body.phone, 30);
+  const phone = formatPhone(body.phone);
   const password = String(body.password || "");
-  if (name.length < 1) return json(400, { error: "Please add your name." });
-  if (!email.includes("@") || email.length < 3) return json(400, { error: "Please add an email address." });
-  if (phone.length < 7) return json(400, { error: "Please add a phone number." });
+  const role = clean(body.role, 20);
+  if (firstName.length < 1) return json(400, { error: "Please add your first name." });
+  if (lastName.length < 1) return json(400, { error: "Please add your last name." });
+  if (name.length > 80) return json(400, { error: "Please shorten your name." });
+  if (!validEmail(email)) return json(400, { error: "Please add a valid email address." });
+  if (!phone) return json(400, { error: "Please add a 10-digit phone number." });
   if (password.length < 8) return json(400, { error: "Please choose a password of at least 8 characters." });
+  if (role !== "customer" && role !== "employee") {
+    return json(400, { error: "Please choose Customer or Service Provider." });
+  }
   const taken = await db.one(
     `SELECT email FROM clients WHERE email = ?
      UNION SELECT email FROM employees WHERE email = ?`,
@@ -200,40 +241,40 @@ async function registerCustomer(db, request) {
   );
   if (taken) return json(400, { error: "That email already has an account. Sign in instead." });
   const now = new Date().toISOString();
-  const clientId = crypto.randomUUID();
   const passwordHash = await hashPassword(password);
-  await db.run(
-    `INSERT INTO clients (client_id, email, password_hash, name, phone, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [clientId, email, passwordHash, name, phone, now, now],
-  );
-  await db.run(
-    `INSERT INTO interaction_history
-      (interaction_id, client_id, kind, summary, actor, created_at)
-     VALUES (?, ?, 'note', 'Account created.', 'client', ?)`,
-    [crypto.randomUUID(), clientId, now],
-  );
-  const cookie = await startSession(db, request, { clientId });
-  return json(200, { ok: true }, cookie);
-}
-
-async function loginCustomer(db, request) {
-  const body = await readJson(request);
-  if (!body) return json(400, { error: "Please check the form and try again." });
-  const email = clean(body.email, 120).toLowerCase();
-  const password = String(body.password || "");
-  const client = await db.one(
-    "SELECT client_id, password_hash FROM clients WHERE email = ?",
-    [email],
-  );
-  if (!client || !(await passwordMatches(password, client.password_hash))) {
-    return json(401, { error: "That email or password is not right." });
+  try {
+    if (role === "employee") {
+      const empId = crypto.randomUUID();
+      await db.run(
+        `INSERT INTO employees (emp_id, email, password_hash, name, phone, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [empId, email, passwordHash, name, phone, now, now],
+      );
+      return json(200, { ok: true, role, service_provider: true, signedIn: false }, sessionCookie("", request, true));
+    }
+    const clientId = crypto.randomUUID();
+    await db.run(
+      `INSERT INTO clients (client_id, email, password_hash, name, phone, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [clientId, email, passwordHash, name, phone, now, now],
+    );
+    await db.run(
+      `INSERT INTO interaction_history
+        (interaction_id, client_id, kind, summary, actor, created_at)
+       VALUES (?, ?, 'note', 'Account created.', 'client', ?)`,
+      [crypto.randomUUID(), clientId, now],
+    );
+    return json(200, { ok: true, role, service_provider: false, signedIn: false }, sessionCookie("", request, true));
+  } catch (error) {
+    const message = String(error && error.message ? error.message : error);
+    if (message.includes("email already belongs") || message.includes("UNIQUE")) {
+      return json(400, { error: "That email already has an account. Sign in instead." });
+    }
+    throw error;
   }
-  const cookie = await startSession(db, request, { clientId: client.client_id });
-  return json(200, { ok: true }, cookie);
 }
 
-async function loginEmployee(db, request) {
+async function loginAccount(db, request) {
   const body = await readJson(request);
   if (!body) return json(400, { error: "Please check the form and try again." });
   const email = clean(body.email, 120).toLowerCase();
@@ -242,11 +283,19 @@ async function loginEmployee(db, request) {
     "SELECT emp_id, password_hash FROM employees WHERE email = ?",
     [email],
   );
-  if (!employee || !(await passwordMatches(password, employee.password_hash))) {
-    return json(401, { error: "That email or password is not right." });
+  if (employee && (await passwordMatches(password, employee.password_hash))) {
+    const cookie = await startSession(db, request, { empId: employee.emp_id });
+    return json(200, { ok: true, role: "employee", service_provider: true }, cookie);
   }
-  const cookie = await startSession(db, request, { empId: employee.emp_id });
-  return json(200, { ok: true }, cookie);
+  const client = await db.one(
+    "SELECT client_id, password_hash FROM clients WHERE email = ?",
+    [email],
+  );
+  if (client && (await passwordMatches(password, client.password_hash))) {
+    const cookie = await startSession(db, request, { clientId: client.client_id });
+    return json(200, { ok: true, role: "customer", service_provider: false }, cookie);
+  }
+  return json(401, { error: "That email or password is not right." });
 }
 
 async function customerHome(db, request) {
@@ -361,6 +410,43 @@ async function employeeHome(db, request) {
   });
 }
 
+async function bookPrefill(db, request) {
+  const session = await sessionFor(db, request);
+  if (!session?.client_id) return json(200, { signedIn: Boolean(session?.emp_id), fields: {} });
+  const client = await db.one(
+    "SELECT name, email, phone, address, zip FROM clients WHERE client_id = ?",
+    [session.client_id],
+  );
+  if (!client) return json(200, { signedIn: false, fields: {} });
+  const service = await db.one(
+    `SELECT property_type, size_sqft, bedrooms, bathrooms, cleaning_type, frequency, address, zip, notes
+     FROM service_history
+     WHERE client_id = ? AND outcome = 'completed'
+     ORDER BY rendered_on DESC, created_at DESC
+     LIMIT 1`,
+    [session.client_id],
+  );
+  const fields = {
+    name: client.name,
+    email: client.email,
+    phone: client.phone,
+  };
+  if (client.address) fields.address = client.address;
+  if (client.zip) fields.zip = client.zip;
+  if (service) {
+    fields.address = service.address;
+    fields.zip = service.zip;
+    fields.propertyType = PROPERTY[service.property_type] || "";
+    if (service.size_sqft) fields.size = String(service.size_sqft);
+    fields.bedrooms = String(service.bedrooms);
+    fields.bathrooms = String(service.bathrooms);
+    fields.cleaningType = labelCleaning(service.cleaning_type);
+    fields.frequency = FREQUENCY[service.frequency] || "";
+    if (service.notes) fields.notes = service.notes;
+  }
+  return json(200, { signedIn: true, source: service ? "last-service" : "member", fields });
+}
+
 async function logout(db, request) {
   const token = readCookie(request, COOKIE);
   if (token) {
@@ -372,10 +458,11 @@ async function logout(db, request) {
 export async function routePortal(db, request) {
   const path = new URL(request.url).pathname;
   if (path === "/api/portal/customer/register" && request.method === "POST") return registerCustomer(db, request);
-  if (path === "/api/portal/customer/login" && request.method === "POST") return loginCustomer(db, request);
+  if (path === "/api/portal/customer/login" && request.method === "POST") return loginAccount(db, request);
   if (path === "/api/portal/customer" && request.method === "GET") return customerHome(db, request);
-  if (path === "/api/portal/employee/login" && request.method === "POST") return loginEmployee(db, request);
+  if (path === "/api/portal/employee/login" && request.method === "POST") return loginAccount(db, request);
   if (path === "/api/portal/employee" && request.method === "GET") return employeeHome(db, request);
+  if (path === "/api/portal/book" && request.method === "GET") return bookPrefill(db, request);
   if (path === "/api/portal/logout" && request.method === "POST") return logout(db, request);
   return null;
 }

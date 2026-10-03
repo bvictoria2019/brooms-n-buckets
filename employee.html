@@ -42,16 +42,17 @@
         <p class="note" data-banner hidden></p>
         <div data-signed-out>
           <form class="form card portal-narrow" data-portal-form action="/api/portal/employee/login" method="post">
-            <h2>Sign in</h2>
+            <h2>Employee Portal Login</h2>
             <label>Email <input name="email" type="email" autocomplete="username" required></label>
             <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
             <button class="btn btn-primary" type="submit">Sign in</button>
             <p class="note" role="status" hidden></p>
           </form>
-          <p class="hint">An employee account is opened for you. This page does not create one.</p>
+          <p class="hint">Choose Service Provider on <a href="customer.html#signup">Sign Up</a> to open an account. This page is the sign-in.</p>
         </div>
         <div data-signed-in hidden>
           <p class="lede" data-hello></p>
+          <p class="actions"><a class="btn btn-primary" href="calendar.html">View Calendar</a></p>
           <div class="portal-grid">
             <section class="card">
               <h2>Customers on your schedule</h2>
@@ -85,6 +86,6 @@
     <div class="shell fineprint"><p>© <span data-year>2026</span> Brooms &amp; Buckets LLC. <a href="privacy.html">Privacy</a></p></div>
   </footer>
   <script src="js/site.js"></script>
-  <script src="js/portal.js"></script>
+  <script src="js/portal.js?v=2"></script>
 </body>
 </html>

@@ -56,10 +56,25 @@ function note(form, message, isError) {
   el.classList.toggle("is-error", Boolean(isError));
 }
 
+function chosenRole(form) {
+  const checked = form.querySelector('input[name="role"]:checked');
+  return checked ? checked.value : "";
+}
+
+function pointMemberLink(form) {
+  const link = form.querySelector("[data-member-link]");
+  if (!link) return;
+  link.href = chosenRole(form) === "employee" ? "employee.html" : "customer.html#login";
+}
+
 async function postForm(form) {
   const payload = {};
   Array.from(form.elements).forEach((el) => {
     if (!el.name || el.type === "submit") return;
+    if (el.type === "checkbox") {
+      if (el.checked) payload[el.name] = el.value;
+      return;
+    }
     payload[el.name] = String(el.value || "");
   });
   const response = await fetch(form.action, {
@@ -119,9 +134,42 @@ function renderEmployee(data) {
   ]);
 }
 
+function openPortal(data) {
+  const provider = data.service_provider === true || data.role === "employee";
+  if (provider && host.dataset.portal !== "employee") {
+    window.location.assign("employee.html");
+    return true;
+  }
+  if (!provider && host.dataset.portal === "employee" && data.role === "customer") {
+    window.location.assign("customer.html");
+    return true;
+  }
+  return false;
+}
+
+function showSignInNote() {
+  const message = sessionStorage.getItem("bb-signin-note");
+  if (!message) return;
+  const signedOut = host.querySelector("[data-signed-out]");
+  if (!signedOut || signedOut.hidden) return;
+  const form = signedOut.querySelector("[data-pane='login']") || signedOut.querySelector("form");
+  if (!form) return;
+  sessionStorage.removeItem("bb-signin-note");
+  note(form, message, false);
+}
+
 async function loadSession() {
   const response = await fetch(host.dataset.session, { headers: { accept: "application/json" } });
-  if (response.status === 401) return;
+  if (response.status === 401) {
+    const other = host.dataset.portal === "employee" ? "/api/portal/customer" : "/api/portal/employee";
+    const alt = await fetch(other, { headers: { accept: "application/json" } });
+    if (alt.ok) {
+      window.location.assign(host.dataset.portal === "employee" ? "customer.html" : "employee.html");
+      return;
+    }
+    showSignInNote();
+    return;
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "The portal could not be opened.");
   if (host.dataset.portal === "employee") renderEmployee(data);
@@ -143,6 +191,18 @@ if (host) {
   window.addEventListener("hashchange", showAuthPane);
   showAuthPane();
   host.querySelectorAll("form[data-portal-form]").forEach((form) => {
+    const roles = form.querySelectorAll('input[name="role"]');
+    roles.forEach((box) => {
+      box.addEventListener("change", () => {
+        if (box.checked) {
+          roles.forEach((other) => {
+            if (other !== box) other.checked = false;
+          });
+        }
+        pointMemberLink(form);
+      });
+    });
+    pointMemberLink(form);
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (!form.reportValidity()) return;
@@ -152,8 +212,25 @@ if (host) {
         note(form, "Those passwords do not match.", true);
         return;
       }
+      if (roles.length && !chosenRole(form)) {
+        note(form, "Please choose Customer or Service Provider.", true);
+        return;
+      }
       try {
-        await postForm(form);
+        const data = await postForm(form);
+        if (form.action.includes("/register")) {
+          const provider = data.service_provider === true || data.role === "employee";
+          sessionStorage.setItem("bb-signin-note", "Your account is ready. Please sign in.");
+          if (provider) {
+            window.location.assign("employee.html");
+            return;
+          }
+          location.hash = "login";
+          showAuthPane();
+          showSignInNote();
+          return;
+        }
+        if (openPortal(data)) return;
         await loadSession();
       } catch (error) {
         note(form, error.message, true);

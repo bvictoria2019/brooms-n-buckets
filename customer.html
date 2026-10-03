@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/site.css?v=9">
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -50,13 +50,20 @@
             </form>
             <form class="form card portal-narrow" id="signup" data-pane="signup" data-portal-form action="/api/portal/customer/register" method="post" hidden>
               <h2>Sign Up</h2>
-              <label>Name <input name="name" autocomplete="name" required></label>
+              <label>First name <input name="firstName" autocomplete="given-name" required></label>
+              <label>Last name <input name="lastName" autocomplete="family-name" required></label>
               <label>Email <input name="email" type="email" autocomplete="email" required></label>
-              <label>Phone <input name="phone" type="tel" autocomplete="tel" required></label>
+              <label>Phone <span class="hint">10 digits, such as 972-877-3781</span>
+                <input name="phone" type="tel" autocomplete="tel" required></label>
               <label>Password <input name="password" type="password" autocomplete="new-password" minlength="8" required></label>
               <label>Password again <input name="confirm" type="password" autocomplete="new-password" minlength="8" required></label>
+              <div class="checks" role="group" aria-label="Sign up as">
+                <label class="check"><input type="checkbox" name="role" value="customer"> Customer</label>
+                <label class="check"><input type="checkbox" name="role" value="employee"> Service Provider</label>
+              </div>
               <label class="hp">Website <input name="website" tabindex="-1" autocomplete="off"></label>
               <button class="btn btn-primary" type="submit">Sign Up</button>
+              <a class="btn btn-secondary" href="customer.html#login" data-member-link>Already a Member?</a>
               <p class="note" role="status" hidden></p>
             </form>
           </div>
@@ -103,6 +110,6 @@
     <div class="shell fineprint"><p>© <span data-year>2026</span> Brooms &amp; Buckets LLC. <a href="privacy.html">Privacy</a></p></div>
   </footer>
   <script src="js/site.js"></script>
-  <script src="js/portal.js"></script>
+  <script src="js/portal.js?v=2"></script>
 </body>
 </html>

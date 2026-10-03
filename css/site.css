@@ -471,6 +471,31 @@ legend { font-weight: 600; margin-bottom: 0.35rem; }
   margin-top: 1rem;
 }
 
+.form[hidden],
+[data-signed-in][hidden],
+[data-signed-out][hidden] { display: none; }
+
+.portal-narrow .btn { width: 100%; }
+
+.checks { display: grid; gap: 0.35rem; }
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 44px;
+  font-weight: 600;
+}
+
+.check input[type="checkbox"] {
+  width: 1.15rem;
+  height: 1.15rem;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--sage-deep);
+}
+
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
 
 label { display: grid; gap: 0.35rem; font-weight: 600; font-size: 0.95rem; }
@@ -653,3 +678,76 @@ textarea { min-height: 140px; resize: vertical; }
 }
 
 .portal-list p { margin: 0; }
+
+.provider-calendar {
+  margin-top: 1.25rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 0.85rem;
+}
+
+.provider-calendar.fc {
+  --fc-border-color: var(--line);
+  --fc-page-bg-color: var(--paper);
+  --fc-neutral-bg-color: var(--pale);
+  --fc-today-bg-color: rgba(126, 161, 132, 0.2);
+  --fc-button-bg-color: var(--sage);
+  --fc-button-border-color: var(--sage);
+  --fc-button-text-color: var(--navy);
+  --fc-button-hover-bg-color: var(--sage-deep);
+  --fc-button-hover-border-color: var(--sage-deep);
+  --fc-button-hover-text-color: var(--navy);
+  --fc-button-active-bg-color: var(--navy);
+  --fc-button-active-border-color: var(--navy);
+  --fc-button-active-text-color: var(--paper);
+  --fc-event-bg-color: var(--blue);
+  --fc-event-border-color: var(--blue);
+  --fc-event-text-color: #fff;
+  font-family: var(--sans);
+}
+
+.provider-calendar.fc .fc-toolbar.fc-header-toolbar {
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.provider-calendar.fc .fc-toolbar-title {
+  font-family: var(--serif);
+  font-size: 1.55rem;
+  color: var(--navy);
+}
+
+.provider-calendar.fc .fc-button {
+  border-radius: 999px;
+  font-weight: 600;
+  text-transform: none;
+  box-shadow: none;
+}
+
+.provider-calendar.fc colgroup > col:first-child { width: 5rem !important; }
+
+.provider-calendar.fc .fc-timegrid-axis-cushion {
+  font-size: 0.75rem;
+  white-space: nowrap;
+  padding: 0;
+}
+
+.provider-calendar.fc .fc-timegrid-slot { height: 2.4rem; }
+
+.visit-detail { margin-top: 1rem; }
+
+.visit-detail p { margin: 0.2rem 0; }
+
+@media (max-width: 700px) {
+  .provider-calendar.fc .fc-toolbar.fc-header-toolbar {
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+  .provider-calendar.fc .fc-toolbar-title { font-size: 1.25rem; }
+  .provider-calendar.fc .fc-toolbar-chunk {
+    display: flex !important;
+    justify-content: center;
+    margin: 0.2rem 0 !important;
+  }
+}

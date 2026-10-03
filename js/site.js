@@ -141,4 +141,64 @@ async function loadReviews() {
   }
 }
 
+const CONTACT_INTEREST = {
+  Recurring: "Recurring cleaning",
+  "Deep cleaning": "Deep cleaning",
+  "Move-in": "Move-in / move-out",
+  "Move-out": "Move-in / move-out",
+};
+
+function writeFields(form, fields) {
+  let filled = false;
+  Object.entries(fields).forEach(([name, value]) => {
+    const el = form.elements.namedItem(name);
+    if (!el || value == null || value === "") return;
+    if (String(el.value || "").trim()) return;
+    el.value = String(value);
+    filled = true;
+  });
+  return filled;
+}
+
+function showPrefill(form, source, extra) {
+  const line = form.querySelector("[data-prefill]");
+  if (!line) return;
+  line.hidden = false;
+  const fromLast = source === "last-service";
+  line.textContent = fromLast
+    ? `We filled this in from your account and your last clean.${extra}`
+    : "We filled this in from your account.";
+}
+
+function contactFields(fields) {
+  const next = {
+    name: fields.name,
+    email: fields.email,
+    phone: fields.phone,
+    city: fields.zip,
+    message: fields.notes,
+  };
+  if (fields.cleaningType && CONTACT_INTEREST[fields.cleaningType]) {
+    next.interest = CONTACT_INTEREST[fields.cleaningType];
+  }
+  return next;
+}
+
+async function prefillKnown() {
+  const book = document.querySelector("form[data-form='book']");
+  const contact = document.querySelector("form[data-form='contact']");
+  if (!book && !contact) return;
+  try {
+    const response = await fetch("/api/portal/book", { headers: { accept: "application/json" } });
+    if (!response.ok) return;
+    const data = await response.json();
+    const fields = data.fields || {};
+    if (book && writeFields(book, fields)) showPrefill(book, data.source, " The date is still yours to choose.");
+    if (contact && writeFields(contact, contactFields(fields))) showPrefill(contact, data.source, "");
+  } catch {
+    /* The form still works when the person is not signed in. */
+  }
+}
+
 loadReviews();
+prefillKnown();
