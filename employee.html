@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/site.css?v=18">
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -38,7 +38,7 @@
       <div class="shell" data-portal="employee" data-session="/api/portal/employee">
         <p class="eyebrow">Employee Portal</p>
         <h1>Your day.</h1>
-        <p class="lede">Sign in with your email. You will see the customers on your schedule, and the notes you have with them.</p>
+        <p class="lede">Sign in with your email. Open requests are here. Check the calendar, assign someone, and confirm the visit. The customer sees that confirmation in the portal.</p>
         <p class="note" data-banner hidden></p>
         <div data-signed-out>
           <form class="form card portal-narrow" data-portal-form action="/api/portal/employee/login" method="post">
@@ -52,8 +52,16 @@
         </div>
         <div data-signed-in hidden>
           <p class="lede" data-hello></p>
+          <section class="card">
+            <h2>Requests to review</h2>
+            <div data-open-requests></div>
+          </section>
           <p class="actions"><a class="btn btn-primary" href="calendar.html">View Calendar</a></p>
           <div class="portal-grid">
+            <section class="card">
+              <h2>The calendar</h2>
+              <ul class="portal-list" data-calendar></ul>
+            </section>
             <section class="card">
               <h2>Customers on your schedule</h2>
               <ul class="portal-list" data-schedule></ul>
@@ -86,6 +94,6 @@
     <div class="shell fineprint"><p>© <span data-year>2026</span> Brooms &amp; Buckets LLC. <a href="privacy.html">Privacy</a></p></div>
   </footer>
   <script src="js/site.js"></script>
-  <script src="js/portal.js?v=2"></script>
+  <script src="js/portal.js?v=5"></script>
 </body>
 </html>

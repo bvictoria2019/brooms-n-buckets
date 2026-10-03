@@ -683,6 +683,32 @@ textarea { min-height: 140px; resize: vertical; }
 
 .portal-list p { margin: 0; }
 
+.review-list, .confirm-list { display: grid; gap: 0.9rem; }
+
+.review-card, .confirm-card {
+  background: var(--cream);
+  border-radius: 16px;
+  padding: 0.95rem 1rem 1rem;
+}
+
+.review-card h3, .confirm-card h3 {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 1.35rem;
+  margin: 0 0 0.35rem;
+}
+
+.review-card .form, .confirm-card .checklist { margin-top: 0.75rem; }
+
+.review-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+.review-actions .btn { width: auto; }
+
+.confirm-card .checklist { margin-bottom: 0.8rem; }
+
+@media (max-width: 640px) {
+  .review-actions .btn { width: 100%; }
+}
+
 .provider-calendar {
   margin-top: 1.25rem;
   background: var(--paper);

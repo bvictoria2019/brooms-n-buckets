@@ -1,3 +1,4 @@
+import { sendMail } from "../../_lib/mail.js";
 import { d1, routePortal } from "../../_lib/portal.js";
 
 export async function onRequest(context) {
@@ -7,6 +8,7 @@ export async function onRequest(context) {
       { status: 503, headers: { "cache-control": "no-store" } },
     );
   }
-  const response = await routePortal(d1(context.env.DB), context.request);
+  const sendTo = (to, subject, text) => sendMail(context.env, to, subject, text);
+  const response = await routePortal(d1(context.env.DB), context.request, sendTo);
   return response || new Response("Not found", { status: 404 });
 }

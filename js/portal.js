@@ -87,11 +87,251 @@ async function postForm(form) {
   return data;
 }
 
+function addParagraph(parent, text) {
+  if (!text) return;
+  const p = document.createElement("p");
+  p.textContent = text;
+  parent.appendChild(p);
+}
+
+function addList(parent, title, rows, emptyText) {
+  addParagraph(parent, title);
+  const list = document.createElement("ul");
+  list.className = "checklist";
+  const items = rows && rows.length ? rows : [emptyText];
+  items.forEach((text) => {
+    const li = document.createElement("li");
+    li.textContent = text;
+    list.appendChild(li);
+  });
+  parent.appendChild(list);
+}
+
+function renderConfirmations(root, rows) {
+  root.replaceChildren();
+  if (!rows || !rows.length) {
+    addParagraph(root, "No confirmed visits yet.");
+    return;
+  }
+  const list = document.createElement("div");
+  list.className = "confirm-list";
+  rows.forEach((row) => {
+    const card = document.createElement("article");
+    card.className = "confirm-card";
+    const title = document.createElement("h3");
+    title.textContent = row.cleaning || "Confirmed visit";
+    card.appendChild(title);
+    addParagraph(card, `Booking number ${row.bookingNumber}`);
+    addParagraph(card, row.employee ? `Assigned to ${row.employee}` : "Assigned employee is not set.");
+    addParagraph(card, [row.address, row.zip].filter(Boolean).join(", "));
+    addParagraph(card, showDate(row.day, row.time));
+    addParagraph(card, `Arrival window: ${row.arrival}`);
+    addParagraph(card, `Expected duration: ${row.duration}`);
+    addParagraph(card, `Price: ${row.price}`);
+    addList(card, "Included", row.included, "Included services are on the Services page.");
+    addList(card, "Add-ons", row.addons, "No add-ons on this request.");
+    addList(card, "Before we arrive", row.preparation, "");
+    addParagraph(card, row.cancellation);
+    const policy = document.createElement("p");
+    const link = document.createElement("a");
+    link.href = "policies/preparation.html";
+    link.textContent = "Client preparation";
+    policy.appendChild(link);
+    card.appendChild(policy);
+    list.appendChild(card);
+  });
+  root.appendChild(list);
+}
+
+function dayNote(calendar, staff, day) {
+  const visits = (calendar || []).filter((row) => row.day === day);
+  const lines = visits.length
+    ? visits.map((row) => `${row.employee} is already booked for ${row.customer} at ${row.address}${row.time ? ` at ${row.time}` : ""}.`)
+    : ["No other visit is on the calendar that day."];
+  const people = (staff || []).map((person) => {
+    const busy = visits.some((row) => row.employeeId === person.id);
+    return `${person.name}: ${busy ? "already booked that day" : "free that day"}.`;
+  });
+  return { lines, people };
+}
+
+function renderReviews(root, data) {
+  root.replaceChildren();
+  const rows = data.reviews || [];
+  if (!rows.length) {
+    addParagraph(root, "No requests waiting.");
+    return;
+  }
+  const list = document.createElement("div");
+  list.className = "review-list";
+  rows.forEach((row) => {
+    const card = document.createElement("article");
+    card.className = "review-card";
+    const title = document.createElement("h3");
+    title.textContent = row.customer;
+    card.appendChild(title);
+    addParagraph(card, row.status);
+    addParagraph(card, row.email);
+    addParagraph(card, row.phone);
+    addParagraph(card, [row.address, row.zip].filter(Boolean).join(", "));
+    addParagraph(card, row.property);
+    addParagraph(card, row.service);
+    addParagraph(card, `Asked for ${showDate(row.desiredDay, row.desiredTime)}`);
+    if (row.offeredDay) addParagraph(card, `Offered ${showDate(row.offeredDay, row.offeredTime)}`);
+    addParagraph(card, `Estimated duration: ${row.duration}`);
+    addParagraph(card, row.travel);
+    addParagraph(card, `Price: ${row.price}`);
+    addParagraph(card, row.notes ? `Notes: ${row.notes}` : "No notes.");
+    addParagraph(card, row.addons.length ? `Add-ons: ${row.addons.join(", ")}` : "No add-ons on this request.");
+    addParagraph(card, row.card);
+    const same = document.createElement("div");
+    same.dataset.sameDay = "true";
+    card.appendChild(same);
+    const form = document.createElement("form");
+    form.className = "form";
+    form.dataset.review = row.id;
+    const assign = document.createElement("label");
+    assign.append("Assign to ");
+    const select = document.createElement("select");
+    select.name = "empId";
+    (data.staff || []).forEach((person) => {
+      const option = document.createElement("option");
+      option.value = person.id;
+      option.textContent = person.name;
+      if (person.id === data.selfId) option.selected = true;
+      select.appendChild(option);
+    });
+    assign.appendChild(select);
+    form.appendChild(assign);
+    const dayLabel = document.createElement("label");
+    dayLabel.append("Date ");
+    const day = document.createElement("input");
+    day.type = "date";
+    day.name = "day";
+    day.value = row.desiredDay || "";
+    dayLabel.appendChild(day);
+    form.appendChild(dayLabel);
+    const timeLabel = document.createElement("label");
+    timeLabel.append("Start time ");
+    const time = document.createElement("input");
+    time.type = "time";
+    time.name = "time";
+    timeLabel.appendChild(time);
+    form.appendChild(timeLabel);
+    const arrivalLabel = document.createElement("label");
+    arrivalLabel.append("Arrival window ");
+    const arrivalHint = document.createElement("span");
+    arrivalHint.className = "hint";
+    arrivalHint.textContent = "Such as 9:00 AM – 11:00 AM";
+    arrivalLabel.appendChild(arrivalHint);
+    const arrival = document.createElement("input");
+    arrival.name = "arrival";
+    arrival.maxLength = 80;
+    arrivalLabel.appendChild(arrival);
+    form.appendChild(arrivalLabel);
+    const durationLabel = document.createElement("label");
+    durationLabel.append("Estimated duration, in hours ");
+    const duration = document.createElement("input");
+    duration.name = "duration";
+    duration.inputMode = "decimal";
+    durationLabel.appendChild(duration);
+    form.appendChild(durationLabel);
+    const priceLabel = document.createElement("label");
+    priceLabel.append("Price, in dollars ");
+    const priceHint = document.createElement("span");
+    priceHint.className = "hint";
+    priceHint.textContent = "Leave this empty until you quote it.";
+    priceLabel.appendChild(priceHint);
+    const price = document.createElement("input");
+    price.name = "price";
+    price.inputMode = "decimal";
+    priceLabel.appendChild(price);
+    form.appendChild(priceLabel);
+    const noteLabel = document.createElement("label");
+    noteLabel.append("Note ");
+    const noteBox = document.createElement("textarea");
+    noteBox.name = "note";
+    noteBox.rows = 3;
+    noteLabel.appendChild(noteBox);
+    form.appendChild(noteLabel);
+    const actions = document.createElement("div");
+    actions.className = "review-actions";
+    [
+      ["confirm", "Confirm", "btn btn-primary"],
+      ["offer", "Offer this date", "btn btn-secondary"],
+      ["ask", "Ask for more information", "btn btn-secondary"],
+      ["decline", "Decline", "btn btn-secondary"],
+    ].forEach(([decision, label, className]) => {
+      const button = document.createElement("button");
+      button.type = "submit";
+      button.className = className;
+      button.dataset.decision = decision;
+      button.textContent = label;
+      actions.appendChild(button);
+    });
+    form.appendChild(actions);
+    const status = document.createElement("p");
+    status.className = "note";
+    status.hidden = true;
+    form.appendChild(status);
+    card.appendChild(form);
+    const paintDay = () => {
+      const facts = dayNote(data.calendar, data.staff, day.value);
+      same.replaceChildren();
+      facts.lines.forEach((line) => addParagraph(same, line));
+      facts.people.forEach((line) => addParagraph(same, line));
+    };
+    day.addEventListener("change", paintDay);
+    paintDay();
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const decision = event.submitter ? event.submitter.dataset.decision : "";
+      status.hidden = true;
+      try {
+        const response = await fetch("/api/portal/employee/review", {
+          method: "POST",
+          headers: { "content-type": "application/json", accept: "application/json" },
+          body: JSON.stringify({
+            bookingId: row.id,
+            decision,
+            empId: select.value,
+            day: day.value,
+            time: time.value,
+            arrival: arrival.value,
+            duration: duration.value,
+            price: price.value,
+            note: noteBox.value,
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "Something went wrong. Please call us.");
+        if (decision === "confirm") {
+          sessionStorage.setItem(
+            "bb-mail-note",
+            result.mailed
+              ? "The confirmation email went to the customer."
+              : "The visit is confirmed. The email did not go out.",
+          );
+        }
+        await loadSession();
+      } catch (error) {
+        status.hidden = false;
+        status.textContent = error.message;
+        status.classList.add("is-error");
+      }
+    });
+    list.appendChild(card);
+  });
+  root.appendChild(list);
+}
+
 function renderCustomer(data) {
   host.querySelector("[data-signed-out]").hidden = true;
   const signedIn = host.querySelector("[data-signed-in]");
   signedIn.hidden = false;
   signedIn.querySelector("[data-hello]").textContent = `Hello, ${data.name}.`;
+  const confirmations = signedIn.querySelector("[data-confirmations]");
+  if (confirmations) renderConfirmations(confirmations, data.confirmations);
   fillList(signedIn.querySelector("[data-schedule]"), data.schedule, "No visits on the calendar yet.", (row) => [
     row.cleaning,
     showDate(row.day, row.time),
@@ -120,6 +360,28 @@ function renderEmployee(data) {
   const signedIn = host.querySelector("[data-signed-in]");
   signedIn.hidden = false;
   signedIn.querySelector("[data-hello]").textContent = `Hello, ${data.name}.`;
+  const mailNote = sessionStorage.getItem("bb-mail-note");
+  if (mailNote) {
+    sessionStorage.removeItem("bb-mail-note");
+    const banner = host.querySelector("[data-banner]");
+    if (banner) {
+      banner.hidden = false;
+      banner.textContent = mailNote;
+      banner.classList.toggle("is-error", mailNote.includes("did not"));
+    }
+  }
+  const reviews = signedIn.querySelector("[data-open-requests]");
+  if (reviews) renderReviews(reviews, data);
+  const calendar = signedIn.querySelector("[data-calendar]");
+  if (calendar) {
+    fillList(calendar, data.calendar || [], "Nothing is confirmed yet.", (row) => [
+      row.employee,
+      row.customer,
+      showDate(row.day, row.time),
+      row.address,
+      row.cleaning,
+    ]);
+  }
   fillList(signedIn.querySelector("[data-schedule]"), data.schedule, "No customers on your schedule.", (row) => [
     row.customer,
     showDate(row.day, row.time),

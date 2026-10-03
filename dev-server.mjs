@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
+import { sendMail } from "./functions/_lib/mail.js";
 import { routeInquiry, routePortal, sqlite } from "./functions/_lib/portal.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -131,7 +132,7 @@ const server = http.createServer(async (req, res) => {
     if (req.headers["content-type"]) headers.set("content-type", req.headers["content-type"]);
     const body = req.method === "GET" || req.method === "HEAD" ? undefined : await readRaw(req);
     const request = new Request(url, { method: req.method, headers, body });
-    const response = await routePortal(portalDb, request);
+    const response = await routePortal(portalDb, request, (to, subject, text) => sendMail({}, to, subject, text));
     await sendResponse(res, response || new Response("Not found", { status: 404 }));
     return;
   }

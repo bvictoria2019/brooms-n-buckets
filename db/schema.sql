@@ -163,6 +163,10 @@ CREATE TABLE bookings (
   scheduled_on TEXT,
   scheduled_time TEXT,
   notes TEXT,
+  -- Manager's estimate for this visit, in minutes. Empty until someone enters it.
+  duration_minutes INTEGER,
+  -- Words the customer sees, such as 9:00 AM – 11:00 AM. Empty until set.
+  arrival_window TEXT,
   -- Agreed visit price in cents. Empty until we quote it. Not taken from the rate card.
   amount_cents INTEGER,
   created_at TEXT NOT NULL,
@@ -205,6 +209,8 @@ CREATE TABLE bookings (
     AND substr(scheduled_time, 4, 2) BETWEEN '00' AND '59'
   )),
   CHECK (amount_cents IS NULL OR amount_cents >= 0),
+  CHECK (duration_minutes IS NULL OR (duration_minutes > 0 AND duration_minutes <= 960)),
+  CHECK (arrival_window IS NULL OR length(arrival_window) BETWEEN 1 AND 80),
   CHECK (request_status != 'modified-for-approval' OR offered_on IS NOT NULL),
   CHECK (request_status NOT IN ('scheduled', 'completed', 'no_access') OR scheduled_on IS NOT NULL)
 );
