@@ -2,25 +2,31 @@ import { d1, routeInquiry } from "../_lib/portal.js";
 
 const MAIL_FROM = "scheduler@brooms-n-buckets.com";
 const MAIL_TO = "billvictoria103@gmail.com";
+const ACCOUNT_ID = "c5aa13120079513e0fc73c28fd26a44d";
 
-function rawMessage(subject, text) {
+async function notify(env, subject, text) {
+  const token = env?.MAIL_TOKEN;
+  if (!token) return false;
   const safeSubject = String(subject || "Brooms & Buckets").replace(/[\r\n]+/g, " ");
-  return [
-    `From: Brooms & Buckets <${MAIL_FROM}>`,
-    `To: ${MAIL_TO}`,
-    `Subject: ${safeSubject}`,
-    "MIME-Version: 1.0",
-    "Content-Type: text/plain; charset=utf-8",
-    "",
-    text,
-  ].join("\r\n");
-}
-
-async function notify(mail, subject, text) {
-  if (!mail || typeof mail.send !== "function") return false;
-  const { EmailMessage } = await import("cloudflare:email");
-  await mail.send(new EmailMessage(MAIL_FROM, MAIL_TO, rawMessage(subject, text)));
-  return true;
+  const response = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/email/sending/send`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to: MAIL_TO,
+        from: MAIL_FROM,
+        subject: safeSubject,
+        text,
+      }),
+    },
+  );
+  if (!response.ok) return false;
+  const body = await response.json().catch(() => null);
+  return Boolean(body?.success);
 }
 
 export async function onRequest(context) {
@@ -30,6 +36,6 @@ export async function onRequest(context) {
       { status: 503, headers: { "cache-control": "no-store" } },
     );
   }
-  const send = (subject, text) => notify(context.env.MAIL, subject, text);
+  const send = (subject, text) => notify(context.env, subject, text);
   return routeInquiry(d1(context.env.DB), context.request, send);
 }
