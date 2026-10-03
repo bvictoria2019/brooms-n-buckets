@@ -169,6 +169,8 @@ CREATE TABLE bookings (
   arrival_window TEXT,
   -- Agreed visit price in cents. Empty until we quote it. Not taken from the rate card.
   amount_cents INTEGER,
+  -- Set to the Chicago date when the two-day reminder was sent. Empty until then.
+  reminder_sent_on TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   CHECK (request_status IN (
@@ -211,6 +213,7 @@ CREATE TABLE bookings (
   CHECK (amount_cents IS NULL OR amount_cents >= 0),
   CHECK (duration_minutes IS NULL OR (duration_minutes > 0 AND duration_minutes <= 960)),
   CHECK (arrival_window IS NULL OR length(arrival_window) BETWEEN 1 AND 80),
+  CHECK (reminder_sent_on IS NULL OR length(reminder_sent_on) = 10),
   CHECK (request_status != 'modified-for-approval' OR offered_on IS NOT NULL),
   CHECK (request_status NOT IN ('scheduled', 'completed', 'no_access') OR scheduled_on IS NOT NULL)
 );

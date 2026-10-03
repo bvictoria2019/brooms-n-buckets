@@ -1,0 +1,24 @@
+name: Daily visit reminders
+
+on:
+  schedule:
+    # 13:00 UTC is 8:00 AM in Dallas during daylight saving, and 7:00 AM in winter.
+    - cron: "0 13 * * *"
+  workflow_dispatch:
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remind customers whose visit is two days away
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET is not set on this repository."
+            exit 1
+          fi
+          curl --fail-with-body --silent --show-error --request POST "https://brooms-n-buckets.com/api/reminders" \
+            --header "Authorization: Bearer ${CRON_SECRET}" \
+            --header "Content-Type: application/json"
+          echo

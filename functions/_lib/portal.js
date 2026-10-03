@@ -78,7 +78,7 @@ function clean(value, max) {
   return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
 }
 
-function validEmail(email) {
+export function validEmail(email) {
   if (email.length < 6 || email.length > 120 || email.includes(" ")) return false;
   const parts = email.split("@");
   if (parts.length !== 2) return false;
@@ -264,7 +264,7 @@ const ADDON = {
   short_term_rental_reset: "Short-term rental reset",
 };
 
-const CANCELLATION = "24 hours’ notice or more: no extra fee. A cancellation with less than 24 hours’ notice is $40, unless it is an emergency.";
+export const CANCELLATION = "24 hours’ notice or more: no extra fee. A cancellation with less than 24 hours’ notice is $40, unless it is an emergency.";
 
 function labelAddon(row) {
   if (row.code === "other") return row.label || "Other";
