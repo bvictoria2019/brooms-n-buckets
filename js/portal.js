@@ -306,11 +306,12 @@ function renderReviews(root, data) {
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || "Something went wrong. Please call us.");
         if (decision === "confirm") {
+          const reason = result.mailNote ? ` ${result.mailNote}` : "";
           sessionStorage.setItem(
             "bb-mail-note",
             result.mailed
               ? "The confirmation email went to the customer."
-              : "The visit is confirmed. The email did not go out.",
+              : `The visit is confirmed. The email did not go out.${reason}`,
           );
         }
         await loadSession();
