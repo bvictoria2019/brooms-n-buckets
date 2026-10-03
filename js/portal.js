@@ -129,6 +129,19 @@ async function loadSession() {
 }
 
 if (host) {
+  function showAuthPane() {
+    if (host.dataset.portal !== "customer") return;
+    const signedOut = host.querySelector("[data-signed-out]");
+    if (!signedOut || signedOut.hidden) return;
+    const signup = location.hash === "#signup";
+    const loginPane = signedOut.querySelector("[data-pane='login']");
+    const signupPane = signedOut.querySelector("[data-pane='signup']");
+    if (loginPane) loginPane.hidden = signup;
+    if (signupPane) signupPane.hidden = !signup;
+  }
+
+  window.addEventListener("hashchange", showAuthPane);
+  showAuthPane();
   host.querySelectorAll("form[data-portal-form]").forEach((form) => {
     form.addEventListener("submit", async (event) => {
       event.preventDefault();

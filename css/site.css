@@ -122,6 +122,12 @@ p { margin: 0 0 1rem; }
   font-weight: 500;
 }
 
+.site-nav .btn {
+  min-height: 40px;
+  padding: 0.45rem 0.95rem;
+  font-size: 0.95rem;
+}
+
 .site-nav a[aria-current="page"] { color: var(--blue); }
 
 .menu-btn { display: none; }
@@ -605,6 +611,8 @@ textarea { min-height: 140px; resize: vertical; }
   .site-nav.is-open { display: flex; }
 
   .site-nav a { min-height: 44px; display: flex; align-items: center; }
+
+  .site-nav .btn { width: 100%; margin-top: 0.35rem; }
 
   .header-book { padding-inline: 0.9rem; }
 }

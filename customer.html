@@ -28,6 +28,8 @@
         <a href="contact.html">Contact</a>
         <a href="policies/index.html">House rules</a>
         <a class="btn btn-primary" href="book.html">Book a Clean</a>
+        <a class="btn btn-secondary" href="customer.html#login">Log In</a>
+        <a class="btn btn-primary" href="customer.html#signup">Sign Up</a>
       </nav>
     </div>
   </header>
@@ -38,28 +40,26 @@
         <h1>Your visits.</h1>
         <p class="lede">Sign in with your email to see the schedule, the status of a request, the notes between us, and any award we have given you.</p>
         <p class="note" data-banner hidden></p>
-        <div data-signed-out>
-          <div class="portal-grid">
-            <form class="form card" data-portal-form action="/api/portal/customer/login" method="post">
-              <h2>Sign in</h2>
+          <div data-signed-out>
+            <form class="form card portal-narrow" id="login" data-pane="login" data-portal-form action="/api/portal/customer/login" method="post">
+              <h2>Log In</h2>
               <label>Email <input name="email" type="email" autocomplete="username" required></label>
               <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
-              <button class="btn btn-primary" type="submit">Sign in</button>
+              <button class="btn btn-primary" type="submit">Log In</button>
               <p class="note" role="status" hidden></p>
             </form>
-            <form class="form card" data-portal-form action="/api/portal/customer/register" method="post">
-              <h2>Create an account</h2>
+            <form class="form card portal-narrow" id="signup" data-pane="signup" data-portal-form action="/api/portal/customer/register" method="post" hidden>
+              <h2>Sign Up</h2>
               <label>Name <input name="name" autocomplete="name" required></label>
               <label>Email <input name="email" type="email" autocomplete="email" required></label>
               <label>Phone <input name="phone" type="tel" autocomplete="tel" required></label>
               <label>Password <input name="password" type="password" autocomplete="new-password" minlength="8" required></label>
               <label>Password again <input name="confirm" type="password" autocomplete="new-password" minlength="8" required></label>
               <label class="hp">Website <input name="website" tabindex="-1" autocomplete="off"></label>
-              <button class="btn btn-primary" type="submit">Create account</button>
+              <button class="btn btn-primary" type="submit">Sign Up</button>
               <p class="note" role="status" hidden></p>
             </form>
           </div>
-        </div>
         <div data-signed-in hidden>
           <p class="lede" data-hello></p>
           <div class="portal-grid">
