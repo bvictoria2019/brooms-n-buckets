@@ -1,5 +1,6 @@
 const MAIL_FROM = "scheduler@brooms-n-buckets.com";
 const ACCOUNT_ID = "c5aa13120079513e0fc73c28fd26a44d";
+export const BUSINESS_MAILBOX = "broomsbuckets@gmail.com";
 
 function addressList(value) {
   if (!value) return [];
@@ -47,6 +48,9 @@ export async function sendMail(env, to, subject, text) {
   if (queued.includes(wanted)) return { mailed: true, note: "queued" };
   if (addressList(body?.result?.permanent_bounces).includes(wanted)) {
     return { mailed: false, note: "bounced" };
+  }
+  if (addressList(body?.result?.suppressed_recipients).includes(wanted)) {
+    return { mailed: false, note: "suppressed" };
   }
   return { mailed: false, note: "no-delivery-status" };
 }

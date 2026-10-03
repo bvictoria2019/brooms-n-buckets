@@ -1,10 +1,8 @@
-import { sendMail } from "../_lib/mail.js";
+import { BUSINESS_MAILBOX, sendMail } from "../_lib/mail.js";
 import { d1, routeInquiry } from "../_lib/portal.js";
 
-const MAIL_TO = "billvictoria103@gmail.com";
-
 function notify(env, subject, text) {
-  return sendMail(env, MAIL_TO, subject, text);
+  return sendMail(env, BUSINESS_MAILBOX, subject, text);
 }
 
 export async function onRequest(context) {

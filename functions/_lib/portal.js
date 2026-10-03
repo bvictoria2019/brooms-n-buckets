@@ -1,3 +1,5 @@
+import { BUSINESS_MAILBOX } from "./mail.js";
+
 const ITERATIONS = 10000;
 const COOKIE = "bb_portal";
 const WEEK = 60 * 60 * 24 * 7;
@@ -1130,6 +1132,18 @@ async function logout(db, request) {
 
 const OPEN_REVIEW = ["requested", "in-review", "modified-for-approval"];
 
+async function mailLetter(sendTo, to, subject, text) {
+  if (!validEmail(String(to || "")) || typeof sendTo !== "function") {
+    return { mailed: false, note: "missing-address" };
+  }
+  try {
+    const result = await sendTo(to, subject, text);
+    return { mailed: Boolean(result?.mailed), note: String(result?.note || "") };
+  } catch {
+    return { mailed: false, note: "send failed" };
+  }
+}
+
 function confirmationLetter(fields) {
   const lines = [
     "Your visit is confirmed.",
@@ -1253,18 +1267,12 @@ async function reviewBooking(db, request, sendTo) {
       preparation: PREP,
       cancellation: CANCELLATION,
     });
-    let mailed = false;
-    let mailNote = "missing-address";
-    if (customer?.email && validEmail(customer.email) && typeof sendTo === "function") {
-      try {
-        const result = await sendTo(customer.email, "Your visit is confirmed", letter);
-        mailed = Boolean(result?.mailed);
-        mailNote = String(result?.note || "");
-      } catch {
-        mailed = false;
-        mailNote = "send failed";
-      }
-    }
+    const customerResult = await mailLetter(sendTo, customer?.email, "Your visit is confirmed", letter);
+    const businessResult = customer?.email?.toLowerCase() === BUSINESS_MAILBOX
+      ? customerResult
+      : await mailLetter(sendTo, BUSINESS_MAILBOX, "Your visit is confirmed", letter);
+    const mailed = customerResult.mailed || businessResult.mailed;
+    const mailNote = `customer ${customerResult.note}; broomsbuckets ${businessResult.note}`.slice(0, 160);
     return json(200, { ok: true, mailed, mailNote });
   }
   if (decision === "offer") {

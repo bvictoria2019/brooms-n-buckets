@@ -307,11 +307,14 @@ function renderReviews(root, data) {
         if (!response.ok) throw new Error(result.error || "Something went wrong. Please call us.");
         if (decision === "confirm") {
           const reason = result.mailNote ? ` ${result.mailNote}` : "";
+          const queued = result.mailed && String(result.mailNote || "").includes("queued");
           sessionStorage.setItem(
             "bb-mail-note",
-            result.mailed
+            result.mailed && !queued
               ? "The confirmation email went to the customer."
-              : `The visit is confirmed. The email did not go out.${reason}`,
+              : result.mailed
+                ? `The confirmation email is queued. It is not in the inbox yet.${reason}`
+                : `The visit is confirmed. The email did not go out.${reason}`,
           );
         }
         await loadSession();
