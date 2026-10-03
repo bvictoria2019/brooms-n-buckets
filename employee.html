@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Reviews | Brooms &amp; Buckets</title>
-  <meta name="description" content="Share a Brooms &amp; Buckets review. Notes from neighbors appear under the form.">
-  <link rel="canonical" href="https://www.brooms-n-buckets.com/reviews.html">
+  <title>Employee Portal | Brooms &amp; Buckets</title>
+  <meta name="description" content="Employee sign-in for Brooms &amp; Buckets schedules and customer notes.">
+  <link rel="canonical" href="https://www.brooms-n-buckets.com/employee.html">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,33 +33,35 @@
   </header>
   <main id="main">
     <section class="page-hero">
-      <div class="shell" style="max-width: 44rem;">
-        <p class="eyebrow">Reviews</p>
-        <h1>Tell the next neighbor.</h1>
-        <p class="lede">Your first name, neighborhood, and note appear under this form. Your email stays with us.</p>
-        <form class="form card" data-form="review" action="/api/reviews" method="post">
-          <div class="form-row">
-            <label>First name <input name="firstName" autocomplete="given-name" required></label>
-            <label>Neighborhood <span class="hint">optional</span> <input name="neighborhood"></label>
+      <div class="shell" data-portal="employee" data-session="/api/portal/employee">
+        <p class="eyebrow">Employee Portal</p>
+        <h1>Your day.</h1>
+        <p class="lede">Sign in with your email. You will see the customers on your schedule, and the notes you have with them.</p>
+        <p class="note" data-banner hidden></p>
+        <div data-signed-out>
+          <form class="form card portal-narrow" data-portal-form action="/api/portal/employee/login" method="post">
+            <h2>Sign in</h2>
+            <label>Email <input name="email" type="email" autocomplete="username" required></label>
+            <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+            <button class="btn btn-primary" type="submit">Sign in</button>
+            <p class="note" role="status" hidden></p>
+          </form>
+          <p class="hint">An employee account is opened for you. This page does not create one.</p>
+        </div>
+        <div data-signed-in hidden>
+          <p class="lede" data-hello></p>
+          <div class="portal-grid">
+            <section class="card">
+              <h2>Customers on your schedule</h2>
+              <ul class="portal-list" data-schedule></ul>
+            </section>
+            <section class="card">
+              <h2>Interactions with customers</h2>
+              <ul class="portal-list" data-history></ul>
+            </section>
           </div>
-          <fieldset>
-            <legend>Stars, if you want them</legend>
-            <div class="stars">
-              <label><input type="radio" name="stars" value="1"><span>1</span></label>
-              <label><input type="radio" name="stars" value="2"><span>2</span></label>
-              <label><input type="radio" name="stars" value="3"><span>3</span></label>
-              <label><input type="radio" name="stars" value="4"><span>4</span></label>
-              <label><input type="radio" name="stars" value="5"><span>5</span></label>
-            </div>
-          </fieldset>
-          <label>Your note <textarea name="body" required minlength="8"></textarea></label>
-          <label>Email <span class="hint">not shown on the page</span> <input name="email" type="email" autocomplete="email"></label>
-          <label class="hp">Website <input name="website" tabindex="-1" autocomplete="off"></label>
-          <button class="btn btn-primary" type="submit">Post review</button>
-          <p class="note" role="status" hidden></p>
-        </form>
-        <h2 style="margin-top: 2.4rem;">From the homes we have visited</h2>
-        <div class="review-list" data-reviews></div>
+          <p class="actions"><button class="btn btn-secondary" type="button" data-logout>Sign out</button></p>
+        </div>
       </div>
     </section>
   </main>
@@ -81,5 +83,6 @@
     <div class="shell fineprint"><p>© <span data-year>2026</span> Brooms &amp; Buckets LLC. <a href="privacy.html">Privacy</a></p></div>
   </footer>
   <script src="js/site.js"></script>
+  <script src="js/portal.js"></script>
 </body>
 </html>

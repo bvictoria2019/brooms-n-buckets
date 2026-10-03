@@ -1,4 +1,5 @@
 data/*.json
 data/*.tmp
+data/*.sqlite
 .wrangler/
 node_modules/

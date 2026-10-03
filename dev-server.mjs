@@ -2,12 +2,38 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { DatabaseSync } from "node:sqlite";
+import { routePortal, sqlite } from "./functions/_lib/portal.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const port = 8787;
 const dataDir = path.join(root, "data");
 const reviewsPath = path.join(dataDir, "reviews.json");
 const inquiriesPath = path.join(dataDir, "inquiries.json");
+const portalDb = openPortalDb();
+
+function openPortalDb() {
+  fs.mkdirSync(dataDir, { recursive: true });
+  const database = new DatabaseSync(path.join(dataDir, "portal.sqlite"));
+  database.exec("PRAGMA foreign_keys = ON");
+  const ready = database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'clients'").get();
+  if (!ready) {
+    database.exec(fs.readFileSync(path.join(root, "db", "schema.sql"), "utf8"));
+  }
+  return sqlite(database);
+}
+
+async function sendResponse(res, response) {
+  const headers = {};
+  response.headers.forEach((value, key) => {
+    if (key.toLowerCase() !== "set-cookie") headers[key] = value;
+  });
+  const cookies = typeof response.headers.getSetCookie === "function" ? response.headers.getSetCookie() : [];
+  if (cookies.length) headers["Set-Cookie"] = cookies;
+  const body = Buffer.from(await response.arrayBuffer());
+  res.writeHead(response.status, headers);
+  res.end(body);
+}
 
 const types = {
   ".html": "text/html; charset=utf-8",
@@ -42,6 +68,15 @@ function writeJson(file, value) {
 function send(res, status, body, type = "application/json; charset=utf-8") {
   res.writeHead(status, { "Content-Type": type, "Cache-Control": "no-store" });
   res.end(body);
+}
+
+function readRaw(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on("data", (chunk) => chunks.push(chunk));
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
+  });
 }
 
 function readBody(req) {
@@ -112,6 +147,17 @@ function validateInquiry(body) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || "/", `http://127.0.0.1:${port}`);
+
+  if (url.pathname.startsWith("/api/portal")) {
+    const headers = new Headers();
+    if (req.headers.cookie) headers.set("cookie", req.headers.cookie);
+    if (req.headers["content-type"]) headers.set("content-type", req.headers["content-type"]);
+    const body = req.method === "GET" || req.method === "HEAD" ? undefined : await readRaw(req);
+    const request = new Request(url, { method: req.method, headers, body });
+    const response = await routePortal(portalDb, request);
+    await sendResponse(res, response || new Response("Not found", { status: 404 }));
+    return;
+  }
 
   if (url.pathname === "/api/reviews" && req.method === "GET") {
     send(res, 200, JSON.stringify({ reviews: readJson(reviewsPath, []) }));

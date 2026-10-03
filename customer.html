@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Customer Portal | Brooms &amp; Buckets</title>
+  <meta name="description" content="Sign in to see your Brooms &amp; Buckets schedule, request status, notes, and awards.">
+  <link rel="canonical" href="https://www.brooms-n-buckets.com/customer.html">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="shell header-bar">
+      <a class="brand" href="index.html"><img src="images/bb-wordmark-transparent.png" alt="Brooms &amp; Buckets" width="420" height="120"></a>
+      <div class="header-actions">
+        <a class="btn btn-primary header-book" href="book.html">Book</a>
+        <button class="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+      </div>
+      <nav id="site-nav" class="site-nav" aria-label="Primary">
+        <a href="index.html">Home</a>
+        <a href="services.html">Services</a>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+        <a href="policies/index.html">House rules</a>
+        <a class="btn btn-primary" href="book.html">Book a Clean</a>
+      </nav>
+    </div>
+  </header>
+  <main id="main">
+    <section class="page-hero">
+      <div class="shell" data-portal="customer" data-session="/api/portal/customer">
+        <p class="eyebrow">Customer Portal</p>
+        <h1>Your visits.</h1>
+        <p class="lede">Sign in with your email to see the schedule, the status of a request, the notes between us, and any award we have given you.</p>
+        <p class="note" data-banner hidden></p>
+        <div data-signed-out>
+          <div class="portal-grid">
+            <form class="form card" data-portal-form action="/api/portal/customer/login" method="post">
+              <h2>Sign in</h2>
+              <label>Email <input name="email" type="email" autocomplete="username" required></label>
+              <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+              <button class="btn btn-primary" type="submit">Sign in</button>
+              <p class="note" role="status" hidden></p>
+            </form>
+            <form class="form card" data-portal-form action="/api/portal/customer/register" method="post">
+              <h2>Create an account</h2>
+              <label>Name <input name="name" autocomplete="name" required></label>
+              <label>Email <input name="email" type="email" autocomplete="email" required></label>
+              <label>Phone <input name="phone" type="tel" autocomplete="tel" required></label>
+              <label>Password <input name="password" type="password" autocomplete="new-password" minlength="8" required></label>
+              <label>Password again <input name="confirm" type="password" autocomplete="new-password" minlength="8" required></label>
+              <label class="hp">Website <input name="website" tabindex="-1" autocomplete="off"></label>
+              <button class="btn btn-primary" type="submit">Create account</button>
+              <p class="note" role="status" hidden></p>
+            </form>
+          </div>
+        </div>
+        <div data-signed-in hidden>
+          <p class="lede" data-hello></p>
+          <div class="portal-grid">
+            <section class="card">
+              <h2>Schedule</h2>
+              <ul class="portal-list" data-schedule></ul>
+            </section>
+            <section class="card">
+              <h2>Status</h2>
+              <ul class="portal-list" data-requests></ul>
+            </section>
+            <section class="card">
+              <h2>Interaction history</h2>
+              <ul class="portal-list" data-history></ul>
+            </section>
+            <section class="card">
+              <h2>Awards</h2>
+              <ul class="portal-list" data-awards></ul>
+            </section>
+          </div>
+          <p class="actions"><button class="btn btn-secondary" type="button" data-logout>Sign out</button></p>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <div class="shell footer-grid">
+      <div class="footer-brand">
+        <img src="images/bb-wordmark-transparent.png" alt="Brooms &amp; Buckets">
+        <p>Boutique home cleaning for North Dallas. Good clean. Good people. Good vibes.</p>
+      </div>
+      <div>
+        <strong>Visit</strong>
+        <p><a href="index.html">Home</a><br><a href="services.html">Services</a><br><a href="about.html">About</a><br><a href="reviews.html">Reviews</a><br><a href="contact.html">Contact</a><br><a href="policies/index.html">House rules</a><br><a href="book.html">Book a Clean</a><br><a href="customer.html">Customer Portal</a><br><a href="employee.html">Employee Portal</a></p>
+      </div>
+      <div>
+        <strong>Reach us</strong>
+        <p><a href="tel:+19728773781">972-877-3781</a><br><a href="mailto:scheduler@brooms-n-buckets.com">scheduler@brooms-n-buckets.com</a></p>
+      </div>
+    </div>
+    <div class="shell fineprint"><p>© <span data-year>2026</span> Brooms &amp; Buckets LLC. <a href="privacy.html">Privacy</a></p></div>
+  </footer>
+  <script src="js/site.js"></script>
+  <script src="js/portal.js"></script>
+</body>
+</html>

@@ -619,3 +619,29 @@ textarea { min-height: 140px; resize: vertical; }
   html { scroll-behavior: auto; }
   .card:hover { transform: none; }
 }
+
+.portal-grid {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.portal-grid h2 { font-size: 1.55rem; margin: 0 0 0.8rem; }
+
+.portal-narrow { max-width: 28rem; }
+
+.portal-list {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.portal-list li {
+  background: var(--cream);
+  border-radius: 16px;
+  padding: 0.85rem 1rem;
+}
+
+.portal-list p { margin: 0; }
