@@ -6,7 +6,7 @@ const ACCOUNT_ID = "c5aa13120079513e0fc73c28fd26a44d";
 
 async function notify(env, subject, text) {
   const token = env?.MAIL_TOKEN;
-  if (!token) return false;
+  if (!token) return { mailed: false, note: "missing-token" };
   const safeSubject = String(subject || "Brooms & Buckets").replace(/[\r\n]+/g, " ");
   const response = await fetch(
     `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/email/sending/send`,
@@ -24,9 +24,12 @@ async function notify(env, subject, text) {
       }),
     },
   );
-  if (!response.ok) return false;
   const body = await response.json().catch(() => null);
-  return Boolean(body?.success);
+  if (!response.ok || !body?.success) {
+    const code = body?.errors?.[0]?.message || body?.errors?.[0]?.code || response.status;
+    return { mailed: false, note: String(code).slice(0, 160) };
+  }
+  return { mailed: true, note: "" };
 }
 
 export async function onRequest(context) {

@@ -887,15 +887,23 @@ function requestLetter(kind, fields) {
 
 async function finishRequest(notify, kind, fields, saved) {
   let mailed = false;
+  let mailNote = "";
   if (typeof notify === "function") {
     const subject = kind === "book" ? `Book a Clean from ${fields.name}` : `Contact from ${fields.name}`;
     try {
-      mailed = Boolean(await notify(subject, requestLetter(kind, fields)));
+      const result = await notify(subject, requestLetter(kind, fields));
+      if (result && typeof result === "object") {
+        mailed = Boolean(result.mailed);
+        mailNote = String(result.note || "");
+      } else {
+        mailed = Boolean(result);
+      }
     } catch {
       mailed = false;
+      mailNote = "send failed";
     }
   }
-  return json(200, { ok: true, saved, mailed });
+  return json(200, { ok: true, saved, mailed, mailNote });
 }
 
 async function logout(db, request) {

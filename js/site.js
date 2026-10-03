@@ -161,9 +161,11 @@ function bindBookConfirm(form) {
     const note = panel.querySelector("[data-confirm-note]");
     if (note) note.hidden = true;
     try {
-      await postJson("/api/inquiry", payload);
+      const data = await postJson("/api/inquiry", payload);
       pending = null;
-      heading.textContent = "We have your request. It is not on the calendar until we confirm the date.";
+      heading.textContent = data.mailed
+        ? "We have your request. It is not on the calendar until we confirm the date."
+        : "We have your request. It is saved. The email copy did not go out.";
       actions.hidden = true;
       form.reset();
       form.hidden = true;
