@@ -447,6 +447,238 @@ async function bookPrefill(db, request) {
   return json(200, { signedIn: true, source: service ? "last-service" : "member", fields });
 }
 
+const INQUIRY_TABLE = `
+CREATE TABLE IF NOT EXISTS inquiries (
+  inquiry_id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  client_id TEXT REFERENCES clients (client_id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  email TEXT,
+  phone TEXT,
+  summary TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  CHECK (length(inquiry_id) > 0),
+  CHECK (kind IN ('book', 'contact')),
+  CHECK (length(name) BETWEEN 1 AND 80),
+  CHECK (email IS NULL OR (length(email) BETWEEN 3 AND 120 AND instr(email, '@') > 1)),
+  CHECK (phone IS NULL OR length(phone) BETWEEN 7 AND 30),
+  CHECK (length(summary) BETWEEN 1 AND 500),
+  CHECK (length(payload) > 1)
+)`;
+
+const PROPERTY_CODE = {
+  House: "house",
+  house: "house",
+  Townhome: "townhome",
+  townhome: "townhome",
+  Apartment: "apartment",
+  apartment: "apartment",
+  Other: "other",
+  other: "other",
+};
+
+const CLEANING_CODE = {
+  Recurring: "recurring",
+  recurring: "recurring",
+  "Deep cleaning": "deep",
+  deep: "deep",
+  "Move-in": "move_in",
+  "Move-out": "move_out",
+  move_in: "move_in",
+  move_out: "move_out",
+};
+
+const FREQUENCY_CODE = {
+  Weekly: "weekly",
+  weekly: "weekly",
+  "Every two weeks": "every_two_weeks",
+  every_two_weeks: "every_two_weeks",
+  Monthly: "monthly",
+  monthly: "monthly",
+  "One time": "one_time",
+  one_time: "one_time",
+};
+
+function isoDate(value) {
+  const text = String(value || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return "";
+  const [year, month, date] = text.split("-").map(Number);
+  const stamp = new Date(year, month - 1, date);
+  if (stamp.getFullYear() !== year || stamp.getMonth() !== month - 1 || stamp.getDate() !== date) return "";
+  return text;
+}
+
+function wholeNumber(value) {
+  const text = String(value ?? "").trim();
+  if (!/^\d+$/.test(text)) return null;
+  return Number(text);
+}
+
+function bathroomCount(value) {
+  const text = String(value ?? "").trim();
+  if (!/^\d+(\.\d+)?$/.test(text)) return null;
+  const count = Number(text);
+  if (!(count > 0)) return null;
+  return count;
+}
+
+function bookFields(body) {
+  const address = clean(body.address, 200);
+  const zip = clean(body.zip, 10);
+  const propertyType = PROPERTY_CODE[clean(body.propertyType, 40)];
+  const cleaningType = CLEANING_CODE[clean(body.cleaningType, 40)];
+  const frequency = FREQUENCY_CODE[clean(body.frequency, 40)];
+  const desiredOn = isoDate(body.date);
+  const bedrooms = wholeNumber(body.bedrooms);
+  const bathrooms = bathroomCount(body.bathrooms);
+  const notes = clean(body.notes, 800);
+  let size = null;
+  if (String(body.size ?? "").trim()) {
+    size = wholeNumber(body.size);
+    if (!size) return { error: "Please check the home size." };
+  }
+  if (address.length < 1) return { error: "Please add the street address." };
+  if (zip.length < 5) return { error: "Please add the ZIP code." };
+  if (!propertyType) return { error: "Please choose a property type." };
+  if (bedrooms == null) return { error: "Please add the number of bedrooms." };
+  if (bathrooms == null) return { error: "Please add the number of bathrooms." };
+  if (!cleaningType) return { error: "Please choose a cleaning type." };
+  if (!frequency) return { error: "Please choose how often." };
+  if (!desiredOn) return { error: "Please choose a date." };
+  return {
+    address,
+    zip,
+    propertyType,
+    cleaningType,
+    frequency,
+    desiredOn,
+    bedrooms,
+    bathrooms,
+    size,
+    notes: notes || null,
+  };
+}
+
+async function clientIdFor(db, request) {
+  const session = await sessionFor(db, request);
+  if (!session?.client_id) return null;
+  const client = await db.one("SELECT client_id FROM clients WHERE client_id = ?", [session.client_id]);
+  return client?.client_id || null;
+}
+
+async function ensureInquiries(db) {
+  await db.run(INQUIRY_TABLE);
+  await db.run("CREATE INDEX IF NOT EXISTS inquiries_created ON inquiries (created_at DESC)");
+}
+
+async function saveInquiry(db, row) {
+  await ensureInquiries(db);
+  await db.run(
+    `INSERT INTO inquiries (inquiry_id, kind, client_id, name, email, phone, summary, payload, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      crypto.randomUUID(),
+      row.kind,
+      row.clientId,
+      row.name,
+      row.email || null,
+      row.phone || null,
+      row.summary.slice(0, 500),
+      JSON.stringify(row.payload),
+      new Date().toISOString(),
+    ],
+  );
+}
+
+export async function routeInquiry(db, request) {
+  if (request.method !== "POST") return json(405, { error: "Please use the form." });
+  const body = await readJson(request);
+  if (!body) return json(400, { error: "Please check the form and try again." });
+  if (clean(body.website, 80)) return json(200, { ok: true });
+  const kind = clean(body.kind, 20);
+  if (kind !== "book" && kind !== "contact") return json(400, { error: "Please use the form." });
+  const name = clean(body.name, 80);
+  const email = clean(body.email, 120).toLowerCase();
+  const phone = formatPhone(body.phone);
+  if (name.length < 1) return json(400, { error: "Please add your name." });
+  if (email && !validEmail(email)) return json(400, { error: "Please add a valid email address." });
+  if (!email && !phone) return json(400, { error: "Please add an email or a phone number." });
+  const clientId = await clientIdFor(db, request);
+  if (kind === "book" && clientId) {
+    const home = bookFields(body);
+    if (home.error) return json(400, { error: home.error });
+    const now = new Date().toISOString();
+    const bookingId = crypto.randomUUID();
+    try {
+      await db.run(
+        `INSERT INTO bookings (
+          booking_id, client_id, request_status, property_type, size_sqft,
+          bedrooms, bathrooms, cleaning_type, frequency, address, zip,
+          desired_on, notes, created_at, updated_at
+        ) VALUES (?, ?, 'requested', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          bookingId,
+          clientId,
+          home.propertyType,
+          home.size,
+          home.bedrooms,
+          home.bathrooms,
+          home.cleaningType,
+          home.frequency,
+          home.address,
+          home.zip,
+          home.desiredOn,
+          home.notes,
+          now,
+          now,
+        ],
+      );
+      await db.run(
+        `INSERT INTO interaction_history
+          (interaction_id, client_id, booking_id, kind, request_status, summary, actor, created_at)
+         VALUES (?, ?, ?, 'status', 'requested', ?, 'client', ?)`,
+        [crypto.randomUUID(), clientId, bookingId, `Requested a clean for ${home.address} on ${home.desiredOn}.`, now],
+      );
+    } catch (error) {
+      const message = String(error && error.message ? error.message : error);
+      if (message.includes("CHECK") || message.includes("constraint")) {
+        return json(400, { error: "Please check the form and try again." });
+      }
+      throw error;
+    }
+    return json(200, { ok: true, saved: "booking" });
+  }
+  let summary = "";
+  let payload = { name, email: email || null, phone };
+  if (kind === "book") {
+    const home = bookFields(body);
+    if (home.error) return json(400, { error: home.error });
+    summary = `Booking request for ${home.address}, ${home.zip}.`;
+    payload = { ...payload, ...home };
+  } else {
+    const message = clean(body.message, 800);
+    if (message.length < 1) return json(400, { error: "Please add a message." });
+    const city = clean(body.city, 80);
+    const interest = clean(body.interest, 40);
+    const contactMethod = ["email", "phone", "text"].includes(clean(body.contactMethod, 20))
+      ? clean(body.contactMethod, 20)
+      : "email";
+    summary = `Note from ${name}. ${message}`;
+    payload = { ...payload, city, interest, contactMethod, message };
+  }
+  await saveInquiry(db, {
+    kind,
+    clientId,
+    name,
+    email: email || null,
+    phone,
+    summary,
+    payload,
+  });
+  return json(200, { ok: true, saved: "inquiry" });
+}
+
 async function logout(db, request) {
   const token = readCookie(request, COOKIE);
   if (token) {

@@ -3,13 +3,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
-import { routePortal, sqlite } from "./functions/_lib/portal.js";
+import { routeInquiry, routePortal, sqlite } from "./functions/_lib/portal.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const port = 8787;
 const dataDir = path.join(root, "data");
 const reviewsPath = path.join(dataDir, "reviews.json");
-const inquiriesPath = path.join(dataDir, "inquiries.json");
 const portalDb = openPortalDb();
 
 function openPortalDb() {
@@ -123,28 +122,6 @@ function validateReview(body) {
   };
 }
 
-function validateInquiry(body) {
-  if (clean(body.website, 80)) return { ok: true, spam: true };
-  const name = clean(body.name, 80);
-  const email = clean(body.email, 120);
-  const phone = clean(body.phone, 30);
-  if (name.length < 1) return { error: "Please add your name." };
-  if (!email.includes("@") && phone.length < 7) {
-    return { error: "Please add an email or a phone number." };
-  }
-  return {
-    ok: true,
-    inquiry: {
-      kind: clean(body.kind, 20) || "contact",
-      name,
-      email,
-      phone,
-      payload: body,
-      createdAt: new Date().toISOString(),
-    },
-  };
-}
-
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || "/", `http://127.0.0.1:${port}`);
 
@@ -183,22 +160,14 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (url.pathname === "/api/inquiry" && req.method === "POST") {
-    try {
-      const result = validateInquiry(await readBody(req));
-      if (result.error) {
-        send(res, 400, JSON.stringify({ error: result.error }));
-        return;
-      }
-      if (!result.spam && result.inquiry) {
-        const inquiries = readJson(inquiriesPath, []);
-        inquiries.unshift(result.inquiry);
-        writeJson(inquiriesPath, inquiries);
-      }
-      send(res, 200, JSON.stringify({ ok: true }));
-    } catch (error) {
-      send(res, 400, JSON.stringify({ error: error.message }));
-    }
+  if (url.pathname === "/api/inquiry") {
+    const headers = new Headers();
+    if (req.headers.cookie) headers.set("cookie", req.headers.cookie);
+    if (req.headers["content-type"]) headers.set("content-type", req.headers["content-type"]);
+    const body = req.method === "GET" || req.method === "HEAD" ? undefined : await readRaw(req);
+    const request = new Request(url, { method: req.method, headers, body });
+    const response = await routeInquiry(portalDb, request);
+    await sendResponse(res, response || new Response("Not found", { status: 404 }));
     return;
   }
 

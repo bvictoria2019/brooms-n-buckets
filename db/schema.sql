@@ -388,3 +388,26 @@ CREATE TABLE reviews (
 CREATE INDEX reviews_public ON reviews (created_at DESC);
 CREATE UNIQUE INDEX reviews_one_per_booking ON reviews (booking_id) WHERE booking_id IS NOT NULL;
 CREATE UNIQUE INDEX reviews_one_per_service ON reviews (service_id) WHERE service_id IS NOT NULL;
+
+-- A contact note, or a booking from someone with no account.
+-- A signed-in Book a Clean is a bookings row, not a row here.
+CREATE TABLE inquiries (
+  inquiry_id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  client_id TEXT REFERENCES clients (client_id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  email TEXT,
+  phone TEXT,
+  summary TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  CHECK (length(inquiry_id) > 0),
+  CHECK (kind IN ('book', 'contact')),
+  CHECK (length(name) BETWEEN 1 AND 80),
+  CHECK (email IS NULL OR (length(email) BETWEEN 3 AND 120 AND instr(email, '@') > 1)),
+  CHECK (phone IS NULL OR length(phone) BETWEEN 7 AND 30),
+  CHECK (length(summary) BETWEEN 1 AND 500),
+  CHECK (length(payload) > 1)
+);
+
+CREATE INDEX inquiries_created ON inquiries (created_at DESC);
