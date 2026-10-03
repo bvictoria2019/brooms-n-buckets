@@ -553,6 +553,8 @@ textarea { min-height: 140px; resize: vertical; }
 }
 
 .note[hidden] { display: none; }
+.note strong { display: block; }
+.note p { margin: 0.35rem 0 0; }
 
 .note.is-error { background: #f8ece8; }
 

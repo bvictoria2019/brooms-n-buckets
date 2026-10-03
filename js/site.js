@@ -54,8 +54,58 @@ function showNote(form, message, isError) {
   const note = form.querySelector(".note");
   if (!note) return;
   note.hidden = false;
-  note.textContent = message;
+  note.replaceChildren(document.createTextNode(message));
   note.classList.toggle("is-error", Boolean(isError));
+}
+
+function showReceipt(form, payload) {
+  const note = form.querySelector(".note");
+  if (!note) return;
+  const labels = {
+    name: "Name",
+    email: "Email",
+    phone: "Phone",
+    address: "Service address",
+    zip: "ZIP code",
+    city: "City or ZIP",
+    propertyType: "Property type",
+    size: "Approximate size",
+    bedrooms: "Bedrooms",
+    bathrooms: "Bathrooms",
+    cleaningType: "Cleaning type",
+    frequency: "Frequency",
+    date: "Desired date",
+    notes: "Notes",
+    interest: "Interest",
+    contactMethod: "Preferred contact",
+    message: "Message",
+  };
+  const methods = { email: "Email", phone: "Phone", text: "Text" };
+  note.hidden = false;
+  note.classList.remove("is-error");
+  note.replaceChildren();
+  const title = document.createElement("strong");
+  title.textContent = payload.kind === "book"
+    ? "We have your request. It is not on the calendar until we confirm the date."
+    : "We have your note. We will answer at the phone or email you gave us.";
+  note.append(title);
+  Object.entries(labels).forEach(([key, label]) => {
+    let value = payload[key];
+    if (!value) return;
+    if (key === "contactMethod") value = methods[value] || value;
+    if (key === "date" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const [year, month, day] = value.split("-").map(Number);
+      value = new Date(year, month - 1, day).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      });
+    }
+    const line = document.createElement("p");
+    line.textContent = `${label}: ${value}`;
+    note.append(line);
+  });
+  note.scrollIntoView({ block: "nearest" });
 }
 
 document.querySelectorAll("form[data-form]").forEach((form) => {
@@ -82,7 +132,7 @@ document.querySelectorAll("form[data-form]").forEach((form) => {
       } else {
         await postJson("/api/inquiry", payload);
         form.reset();
-        showNote(form, "We have your request. We will answer at the phone or email you gave us.");
+        showReceipt(form, payload);
       }
     } catch (error) {
       showNote(form, error.message, true);
